@@ -1,26 +1,52 @@
 .mobile-scanner-overlay {
-  position: absolute;
+  position: fixed;
   top: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 100%;
-  max-width: 480px;
-  height: 100%;
-  background: rgba(15, 10, 30, 0.5); /* Sleek Glassmorphism */
-  backdrop-filter: blur(30px);
-  -webkit-backdrop-filter: blur(30px);
-  border-left: 1px solid rgba(255, 255, 255, 0.05);
-  border-right: 1px solid rgba(255, 255, 255, 0.05);
-  box-shadow: 0 0 50px rgba(0, 0, 0, 0.5);
-  z-index: 100;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 9999;
   display: flex;
-  flex-direction: column;
-  animation: slideUpScanner 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  align-items: center;
+  justify-content: center;
 }
 
-@keyframes slideUpScanner {
-  from { transform: translate(-50%, 100%); }
-  to { transform: translate(-50%, 0); }
+.scanner-modal-backdrop {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  animation: fadeInScanner 0.3s ease;
+}
+
+@keyframes fadeInScanner {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.scanner-modal-content {
+  position: relative;
+  z-index: 10;
+  width: 100%;
+  max-width: 420px;
+  height: 85vh;
+  max-height: 800px;
+  background: rgba(15, 10, 30, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 40px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 30px 60px rgba(0,0,0,0.6);
+  animation: scaleUpScanner 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes scaleUpScanner {
+  from { transform: scale(0.95) translateY(20px); opacity: 0; }
+  to { transform: scale(1) translateY(0); opacity: 1; }
 }
 
 .scanner-top-bar {

@@ -71,103 +71,106 @@ const MobileScannerOverlay = ({ onClose }) => {
 
   return (
     <div className="mobile-scanner-overlay">
-      <div className="scanner-top-bar">
-        <h3>Pindai Struk</h3>
-        <button className="btn-close" onClick={() => { stopCamera(); onClose(); }}>
-          <X size={24} />
-        </button>
-      </div>
-
-      {!scanResult ? (
-        <>
-          <div className="scanner-viewfinder">
-            {loading ? (
-              <div className="scanner-loading">
-                <Loader size={48} className="spin-fast" />
-                <p>Menganalisis struk...</p>
-              </div>
-            ) : (
-               <>
-                <video ref={videoRef} autoPlay playsInline className="camera-video" />
-                <div className="scan-frame">
-                   <div className="scan-corner top-left"></div>
-                   <div className="scan-corner top-right"></div>
-                   <div className="scan-corner bottom-left"></div>
-                   <div className="scan-corner bottom-right"></div>
-                </div>
-               </>
-            )}
-          </div>
-
-          {!loading && (
-            <div className="scanner-bottom-controls">
-              <button className="btn-upload">
-                <Upload size={24} />
-              </button>
-              <button className="btn-capture-ring" onClick={handleCapture}>
-                <div className="btn-capture-inner"></div>
-              </button>
-              <div className="spacer-btn"></div>
-            </div>
-          )}
-        </>
-      ) : (
-        <div className="scanner-result-view">
-          <div className="result-card glass-card">
-            <div className="result-header">
-              <div className="result-icon-wrapper">
-                <FileText size={28} color="#10b981" />
-              </div>
-              <div className="result-title">
-                <h2>Rincian Nota</h2>
-                <p>Hasil Ekstraksi AI</p>
-              </div>
-            </div>
-
-            <div className="result-body">
-              <div className="result-row">
-                <span className="result-label">Merchant</span>
-                <span className="result-value strong">{scanResult.merchant}</span>
-              </div>
-              <div className="result-row">
-                <span className="result-label">Tanggal</span>
-                <span className="result-value">{scanResult.date}</span>
-              </div>
-              
-              <div className="result-divider"></div>
-              
-              <div className="result-items">
-                <span className="result-label mb-2">Item Belanja</span>
-                {scanResult.items.map((item, idx) => (
-                  <div key={idx} className="result-item-row">
-                    <span className="item-qty">{item.qty}x</span>
-                    <span className="item-name">{item.name}</span>
-                    <span className="item-price">Rp {item.price.toLocaleString('id-ID')}</span>
-                  </div>
-                ))}
-              </div>
-
-              <div className="result-divider"></div>
-
-              <div className="result-row total-row">
-                <span className="result-label">Total Belanja</span>
-                <span className="result-total">Rp {scanResult.total.toLocaleString('id-ID')}</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="result-actions">
-            <button className="btn-retake" onClick={handleRetake}>
-              <RefreshCcw size={20} />
-              Pindai Ulang
-            </button>
-            <button className="btn-save" onClick={handleSaveResult}>
-              <CheckCircle size={20} />
-              Simpan Transaksi
-            </button>
-          </div>
+      <div className="scanner-modal-backdrop" onClick={() => { stopCamera(); onClose(); }}></div>
+      <div className="scanner-modal-content">
+        <div className="scanner-top-bar">
+          <h3>Pindai Struk</h3>
+          <button className="btn-close" onClick={() => { stopCamera(); onClose(); }}>
+            <X size={24} />
+          </button>
         </div>
-      )}
+
+        {!scanResult ? (
+          <>
+            <div className="scanner-viewfinder">
+              {loading ? (
+                <div className="scanner-loading">
+                  <Loader size={48} className="spin-fast" />
+                  <p>Menganalisis struk...</p>
+                </div>
+              ) : (
+                 <>
+                  <video ref={videoRef} autoPlay playsInline className="camera-video" />
+                  <div className="scan-frame">
+                     <div className="scan-corner top-left"></div>
+                     <div className="scan-corner top-right"></div>
+                     <div className="scan-corner bottom-left"></div>
+                     <div className="scan-corner bottom-right"></div>
+                  </div>
+                 </>
+              )}
+            </div>
+
+            {!loading && (
+              <div className="scanner-bottom-controls">
+                <button className="btn-upload">
+                  <Upload size={24} />
+                </button>
+                <button className="btn-capture-ring" onClick={handleCapture}>
+                  <div className="btn-capture-inner"></div>
+                </button>
+                <div className="spacer-btn"></div>
+              </div>
+            )}
+          </>
+        ) : (
+          <div className="scanner-result-view">
+            <div className="result-card glass-card">
+              <div className="result-header">
+                <div className="result-icon-wrapper">
+                  <FileText size={28} color="#10b981" />
+                </div>
+                <div className="result-title">
+                  <h2>Rincian Nota</h2>
+                  <p>Hasil Ekstraksi AI</p>
+                </div>
+              </div>
+
+              <div className="result-body">
+                <div className="result-row">
+                  <span className="result-label">Merchant</span>
+                  <span className="result-value strong">{scanResult.merchant}</span>
+                </div>
+                <div className="result-row">
+                  <span className="result-label">Tanggal</span>
+                  <span className="result-value">{scanResult.date}</span>
+                </div>
+                
+                <div className="result-divider"></div>
+                
+                <div className="result-items">
+                  <span className="result-label mb-2">Item Belanja</span>
+                  {scanResult.items.map((item, idx) => (
+                    <div key={idx} className="result-item-row">
+                      <span className="item-qty">{item.qty}x</span>
+                      <span className="item-name">{item.name}</span>
+                      <span className="item-price">Rp {item.price.toLocaleString('id-ID')}</span>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="result-divider"></div>
+
+                <div className="result-row total-row">
+                  <span className="result-label">Total Belanja</span>
+                  <span className="result-total">Rp {scanResult.total.toLocaleString('id-ID')}</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="result-actions">
+              <button className="btn-retake" onClick={handleRetake}>
+                <RefreshCcw size={20} />
+                Pindai Ulang
+              </button>
+              <button className="btn-save" onClick={handleSaveResult}>
+                <CheckCircle size={20} />
+                Simpan Transaksi
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 };
