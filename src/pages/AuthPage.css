@@ -1,0 +1,109 @@
+.auth-page {
+  position: relative;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  overflow: hidden;
+  background-color: #0f0a1e; /* Base dark color just in case */
+}
+
+/* We reuse the fixed-background HTML from LandingPage, but ensure its z-index doesn't cover us */
+.auth-page .fixed-background {
+  z-index: 1;
+}
+
+.auth-back-btn {
+  position: absolute;
+  top: 32px;
+  left: 40px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.8);
+  padding: 12px 24px;
+  border-radius: 30px;
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  z-index: 20;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+.auth-back-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+  color: white;
+  transform: translateX(-4px);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.auth-card {
+  position: relative;
+  z-index: 10;
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(25px);
+  -webkit-backdrop-filter: blur(25px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 40px;
+  padding: 100px 60px;
+  width: 100%;
+  max-width: 800px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  box-shadow: 0 40px 80px rgba(0, 0, 0, 0.5), inset 0 0 20px rgba(255, 255, 255, 0.02);
+}
+
+.auth-title {
+  font-size: 64px;
+  font-weight: 800;
+  color: white;
+  margin: 0 0 16px 0;
+  letter-spacing: -2px;
+  text-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
+}
+
+.auth-subtitle {
+  font-size: 15px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.6);
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  margin: 0 0 60px 0;
+}
+
+.auth-btn-google {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  background: white;
+  color: #1a1a1a;
+  border: none;
+  border-radius: 50px;
+  padding: 20px 48px;
+  font-size: 20px;
+  font-weight: 700;
+  cursor: pointer;
+  width: 100%;
+  max-width: 450px;
+  transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2);
+  text-decoration: none;
+}
+
+.auth-btn-google:hover {
+  transform: translateY(-4px) scale(1.02);
+  box-shadow: 0 20px 40px rgba(255, 255, 255, 0.25);
+  background: #ffffff;
+}
+
+.google-logo {
+  width: 28px;
+  height: 28px;
+}

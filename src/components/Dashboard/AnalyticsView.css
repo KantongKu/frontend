@@ -1,0 +1,277 @@
+.analytics-view {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.av-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.av-header h2 {
+  color: white;
+  font-size: 20px;
+  font-weight: 700;
+  margin: 0;
+}
+
+.av-back-btn {
+  background: transparent;
+  border: none;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+  cursor: pointer;
+  margin-left: -8px;
+}
+
+.av-content {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding-bottom: 40px;
+}
+
+.glass-card {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-radius: 24px;
+  padding: 24px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+}
+
+.text-center {
+  text-align: center;
+}
+
+.av-label {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  margin: 0 0 12px 0;
+}
+
+.av-total {
+  color: white;
+  font-size: 32px;
+  font-weight: 800;
+  margin: 0 0 16px 0;
+}
+
+.av-trend {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.av-trend.positive {
+  background: rgba(76, 175, 80, 0.15);
+  color: #4CAF50;
+}
+
+.av-trend.negative {
+  background: rgba(244, 67, 54, 0.15);
+  color: #F44336;
+}
+
+.av-card-title {
+  color: white;
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0 0 24px 0;
+}
+
+/* Donut Chart styles */
+.av-chart-container {
+  position: relative;
+  width: 200px;
+  height: 200px;
+  margin: 0 auto 32px auto;
+}
+
+.av-donut {
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg); /* Start at 12 o'clock */
+  overflow: visible;
+}
+
+.av-donut path, .av-donut circle {
+  stroke-linecap: round;
+  transition: all 0.3s ease;
+}
+
+.av-donut path:hover {
+  stroke-width: 0.5;
+}
+
+.av-donut-center {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.av-donut-center span {
+  font-size: 32px;
+  font-weight: 800;
+  color: white;
+}
+
+.av-donut-center p {
+  margin: 0;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.av-empty-chart {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+/* Weekly Bar Chart */
+.av-bar-chart {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  height: 150px;
+  padding-top: 20px;
+  margin-bottom: 8px;
+}
+
+.av-bar-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+}
+
+.av-bar-amount {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.7);
+  font-weight: 600;
+}
+
+.av-bar-bg {
+  width: 24px;
+  height: 100px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  display: flex;
+  align-items: flex-end;
+  overflow: hidden;
+}
+
+.av-bar-fill {
+  width: 100%;
+  background: linear-gradient(180deg, #3b82f6 0%, #1d4ed8 100%);
+  border-radius: 12px;
+  transition: height 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.av-bar-label {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.6);
+  font-weight: 600;
+}
+
+/* Legend */
+.av-legend {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.av-legend-item-detailed {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.av-legend-item-detailed:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.av-legend-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.av-legend-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.av-legend-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+}
+
+.av-legend-header h4 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: white;
+}
+
+.av-legend-amount {
+  font-size: 14px;
+  font-weight: 700;
+  color: white;
+}
+
+.av-budget-info {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.av-budget-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.av-budget-bar-bg {
+  width: 100%;
+  height: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.av-budget-bar-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.5s ease-out;
+}

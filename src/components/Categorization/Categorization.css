@@ -1,0 +1,322 @@
+/* Expense Categorization Styles */
+.categorization-container {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+.categorization-header {
+  margin-bottom: 32px;
+}
+
+.categorization-header h1 {
+  font-size: 32px;
+  font-weight: 700;
+  margin: 0 0 8px 0;
+  color: #1f2937;
+}
+
+.categorization-header p {
+  font-size: 16px;
+  color: #6b7280;
+  margin: 0;
+}
+
+/* Tabs */
+.tabs {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 32px;
+  border-bottom: 2px solid #e5e7eb;
+}
+
+.tab {
+  padding: 12px 16px;
+  border: none;
+  background: none;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  color: #6b7280;
+  border-bottom: 3px solid transparent;
+  margin-bottom: -2px;
+  transition: all 0.3s ease;
+}
+
+.tab:hover {
+  color: #3b82f6;
+}
+
+.tab.active {
+  color: #3b82f6;
+  border-bottom-color: #3b82f6;
+}
+
+/* Section */
+.section {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  margin-bottom: 24px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.section h2 {
+  font-size: 18px;
+  font-weight: 600;
+  margin: 0 0 16px 0;
+  color: #1f2937;
+}
+
+.category-section {
+  margin-bottom: 24px;
+  padding-bottom: 24px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.category-section:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
+
+.category-section h3 {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0 0 12px 0;
+}
+
+/* Expense List */
+.expense-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.expense-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #f9fafb;
+  transition: all 0.3s ease;
+}
+
+.expense-item:hover {
+  background: #f3f4f6;
+}
+
+.expense-item.pending {
+  background: #fffbeb;
+  border-color: #fde047;
+}
+
+.expense-info {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex: 1;
+  gap: 16px;
+}
+
+.expense-main {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+}
+
+.expense-description {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.expense-date {
+  font-size: 12px;
+  color: #9ca3af;
+}
+
+.expense-amount {
+  font-weight: 600;
+  color: #1f2937;
+  white-space: nowrap;
+  min-width: 140px;
+  text-align: right;
+}
+
+/* Category Selector */
+.category-selector {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.category-selector select {
+  padding: 8px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 13px;
+  color: #1f2937;
+  background: white;
+  cursor: pointer;
+  flex: 1;
+  min-width: 150px;
+}
+
+.category-selector select:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+/* Actions */
+.expense-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.btn-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  background: #e5e7eb;
+  color: #6b7280;
+}
+
+.btn-icon:hover {
+  background: #d1d5db;
+  color: #1f2937;
+}
+
+.btn-icon.edit {
+  background: #dbeafe;
+  color: #0284c7;
+}
+
+.btn-icon.edit:hover {
+  background: #bfdbfe;
+}
+
+.btn-icon.delete {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.btn-icon.delete:hover {
+  background: #fecaca;
+}
+
+.btn-icon.success {
+  background: #dcfce7;
+  color: #16a34a;
+}
+
+.btn-icon.success:hover {
+  background: #bbf7d0;
+}
+
+.btn-icon.cancel {
+  background: #e5e7eb;
+  color: #6b7280;
+}
+
+.btn-icon.cancel:hover {
+  background: #d1d5db;
+  color: #1f2937;
+}
+
+/* Empty State */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 24px;
+  text-align: center;
+  color: #9ca3af;
+  border: 2px dashed #e5e7eb;
+  border-radius: 8px;
+}
+
+.empty-state.full {
+  grid-column: 1 / -1;
+  min-height: 400px;
+}
+
+.empty-state h3 {
+  font-size: 18px;
+  font-weight: 600;
+  margin: 0 0 8px 0;
+  color: #6b7280;
+}
+
+.empty-state p {
+  font-size: 14px;
+  color: #9ca3af;
+  margin: 0;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .categorization-container {
+    padding: 16px;
+  }
+
+  .expense-info {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .tabs {
+    gap: 8px;
+    overflow-x: auto;
+  }
+
+  .tab {
+    padding: 10px 12px;
+    font-size: 13px;
+  }
+
+  .category-selector {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .category-selector select {
+    min-width: 100%;
+  }
+}
+
+/* Animations */
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.spin {
+  animation: spin 1s linear infinite;
+}
+
+.btn-ai-categorize {
+  transition: all 0.3s ease;
+}
+
+.btn-ai-categorize:hover:not(:disabled) {
+  opacity: 0.9;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
+}
+
+.btn-ai-categorize:disabled {
+  opacity: 0.7;
+  cursor: not-allowed !important;
+}
