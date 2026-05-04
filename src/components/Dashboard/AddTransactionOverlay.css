@@ -54,18 +54,38 @@
   flex-direction: column;
 }
 
-.ato-type-badge {
+.ato-type-toggle {
   display: flex;
-  justify-content: center;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 16px;
+  padding: 6px;
   margin-bottom: 32px;
+  gap: 4px;
 }
 
-.ato-type-badge.income {
-  color: #10b981;
+.ato-type-toggle .toggle-btn {
+  flex: 1;
+  padding: 12px;
+  border: none;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
 }
 
-.ato-type-badge.expense {
-  color: #f43f5e;
+.ato-type-toggle .toggle-btn.active.expense {
+  background: linear-gradient(135deg, #e11d48, #f43f5e);
+  color: white;
+  box-shadow: 0 4px 12px rgba(244, 63, 94, 0.3);
+}
+
+.ato-type-toggle .toggle-btn.active.income {
+  background: linear-gradient(135deg, #059669, #10b981);
+  color: white;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
 }
 
 .ato-form {

@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { X, ArrowDownCircle, ArrowUpCircle, Wallet } from 'lucide-react';
 import './AddTransactionOverlay.css';
 
-const AddTransactionOverlay = ({ type, pockets, onClose, onSubmit }) => {
+const AddTransactionOverlay = ({ type = 'expense', pockets, onClose, onSubmit }) => {
+  const [transactionType, setTransactionType] = useState(type);
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
   const [selectedPocketId, setSelectedPocketId] = useState(pockets.length > 0 ? pockets[0].id : '');
@@ -15,7 +16,7 @@ const AddTransactionOverlay = ({ type, pockets, onClose, onSubmit }) => {
     const numAmount = parseInt(amount.replace(/\D/g, ''), 10);
     
     onSubmit({
-      type,
+      type: transactionType,
       amount: numAmount,
       description,
       pocketId: selectedPocketId
@@ -31,7 +32,7 @@ const AddTransactionOverlay = ({ type, pockets, onClose, onSubmit }) => {
     setAmount(val);
   };
 
-  const isIncome = type === 'income';
+  const isIncome = transactionType === 'income';
 
   return (
     <div className="add-transaction-overlay">
@@ -44,8 +45,21 @@ const AddTransactionOverlay = ({ type, pockets, onClose, onSubmit }) => {
       </div>
 
       <div className="ato-content">
-        <div className={`ato-type-badge ${isIncome ? 'income' : 'expense'}`}>
-          {isIncome ? <ArrowDownCircle size={48} /> : <ArrowUpCircle size={48} />}
+        <div className="ato-type-toggle">
+          <button 
+            type="button"
+            className={`toggle-btn ${!isIncome ? 'active expense' : ''}`}
+            onClick={() => setTransactionType('expense')}
+          >
+            Pengeluaran
+          </button>
+          <button 
+            type="button"
+            className={`toggle-btn ${isIncome ? 'active income' : ''}`}
+            onClick={() => setTransactionType('income')}
+          >
+            Pemasukan
+          </button>
         </div>
 
         <form className="ato-form" onSubmit={handleSubmit}>

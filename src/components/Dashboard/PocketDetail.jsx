@@ -1,5 +1,6 @@
-import React from 'react';
-import { ChevronLeft, MoreVertical, Plus, Utensils, ShoppingCart } from 'lucide-react';
+import React, { useState } from 'react';
+import { ChevronLeft, MoreVertical, Plus, Utensils, ShoppingCart, ArrowDownCircle, ArrowUpCircle } from 'lucide-react';
+import AddTransactionOverlay from './AddTransactionOverlay';
 import './PocketDetail.css';
 
 const dummyPocketActivities = [
@@ -8,7 +9,28 @@ const dummyPocketActivities = [
 ];
 
 const PocketDetail = ({ pocket, onBack }) => {
+  const [transactions, setTransactions] = useState(dummyPocketActivities);
+  const [showAddOverlay, setShowAddOverlay] = useState(false);
+
   if (!pocket) return null;
+
+  const handleAddTransaction = (newTx) => {
+    const now = new Date();
+    const formattedDate = `Today, ${now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })}`;
+    
+    const newActivity = {
+      id: Date.now(),
+      title: newTx.description || 'New Transaction',
+      date: formattedDate,
+      amount: `${newTx.type === 'expense' ? '-' : '+'} Rp ${newTx.amount.toLocaleString('id-ID')}`,
+      type: newTx.type,
+      Icon: newTx.type === 'expense' ? ArrowUpCircle : ArrowDownCircle,
+      iconClass: newTx.type === 'expense' ? 'icon-white' : 'icon-blue'
+    };
+
+    setTransactions([newActivity, ...transactions]);
+    setShowAddOverlay(false);
+  };
 
   return (
     <div className="pocket-detail-view">
@@ -46,7 +68,7 @@ const PocketDetail = ({ pocket, onBack }) => {
         </div>
 
         <div className="pd-actions">
-          <button className="pd-action-btn primary">
+          <button className="pd-action-btn primary" onClick={() => setShowAddOverlay(true)}>
             <Plus size={20} />
             Tambah Transaksi
           </button>
@@ -55,7 +77,7 @@ const PocketDetail = ({ pocket, onBack }) => {
         <div className="pd-transactions">
           <h3>Riwayat Transaksi</h3>
           <div className="activity-list">
-            {dummyPocketActivities.map(activity => (
+            {transactions.map(activity => (
               <div key={activity.id} className="activity-item">
                 <div className={`activity-icon ${activity.iconClass}`}>
                   <activity.Icon size={20} />
@@ -65,13 +87,24 @@ const PocketDetail = ({ pocket, onBack }) => {
                   <p>{activity.date}</p>
                 </div>
                 <div className="activity-amount-box">
-                  <h4 className="text-red">{activity.amount}</h4>
+                  <h4 className={activity.type === 'expense' ? 'text-red' : 'text-green'}>
+                    {activity.amount}
+                  </h4>
                 </div>
               </div>
             ))}
           </div>
         </div>
       </div>
+
+      {showAddOverlay && (
+        <AddTransactionOverlay
+          type="expense"
+          pockets={[pocket]}
+          onClose={() => setShowAddOverlay(false)}
+          onSubmit={handleAddTransaction}
+        />
+      )}
     </div>
   );
 };
