@@ -5,6 +5,46 @@
   color: white;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   overflow-x: hidden;
+  position: relative; /* ensure curtain is bounded */
+}
+
+/* Tile Reveal Animation */
+.tile-curtain-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 9999;
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  grid-template-rows: repeat(12, 1fr);
+  pointer-events: none;
+}
+
+.reveal-tile {
+  background: rgba(255, 255, 255, 0.03); /* Subtle glass tint */
+  backdrop-filter: blur(25px); /* Strong glass blur */
+  -webkit-backdrop-filter: blur(25px);
+  border: 1px solid rgba(255, 255, 255, 0.1); /* Glass edges */
+  box-shadow: inset 0 0 20px rgba(255, 255, 255, 0.02);
+  width: 100%;
+  height: 100%;
+  transition: transform 0.9s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.8s ease;
+  transform-origin: center;
+  transform: scale(1.02); /* slight overlap to prevent gaps */
+}
+
+/* Even tiles shatter to the right */
+.reveal-tile:nth-child(even).opened {
+  transform: scale(0.3) rotate(45deg) translateY(100px);
+  opacity: 0;
+}
+
+/* Odd tiles shatter to the left */
+.reveal-tile:nth-child(odd).opened {
+  transform: scale(0.3) rotate(-45deg) translateY(100px);
+  opacity: 0;
 }
 
 /* Navigation */
@@ -526,6 +566,326 @@
   z-index: 10;
   box-shadow: 0 20px 80px rgba(210, 80, 255, 0.5);
   border: 1px solid rgba(255, 255, 255, 0.25);
+}
+
+/* =========================================
+   TIMELINE SECTION
+========================================= */
+.timeline-section {
+  min-height: 100vh;
+  padding: 100px 24px;
+  position: relative;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.timeline-container {
+  position: relative;
+  max-width: 1000px;
+  width: 100%;
+  margin: 60px auto 0;
+  padding: 40px 0;
+}
+
+/* The central vertical line */
+.timeline-container::after {
+  content: '';
+  position: absolute;
+  width: 2px;
+  background: linear-gradient(to bottom, rgba(255, 123, 0, 0.1), #ff7b00, rgba(255, 123, 0, 0.1));
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  margin-left: -1px;
+}
+
+.timeline-item {
+  padding: 10px 50px;
+  position: relative;
+  width: 50%;
+  box-sizing: border-box;
+  opacity: 0;
+  transition: all 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Alternating sides */
+.timeline-item.left {
+  left: 0;
+  text-align: right;
+  transform: translateX(-50px);
+}
+
+.timeline-item.right {
+  left: 50%;
+  text-align: left;
+  transform: translateX(50px);
+}
+
+.timeline-item.animate-in {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+/* The glowing dots on the line */
+.timeline-dot {
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  background-color: #ff7b00;
+  border-radius: 50%;
+  top: 50px;
+  box-shadow: 0 0 15px rgba(255, 123, 0, 0.8), 0 0 30px rgba(255, 123, 0, 0.4);
+  z-index: 1;
+  transform: scale(0);
+  transition: transform 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  transition-delay: 0.3s;
+}
+
+.timeline-item.animate-in .timeline-dot {
+  transform: scale(1);
+}
+
+.timeline-item.left .timeline-dot {
+  right: -8px;
+}
+
+.timeline-item.right .timeline-dot {
+  left: -8px;
+}
+
+/* Content cards */
+.timeline-content {
+  padding: 32px 40px;
+  background: rgba(15, 10, 30, 0.5); /* Very dark glass */
+  border: 1px solid rgba(255, 123, 0, 0.2);
+  border-radius: 24px;
+  position: relative;
+  transition: all 0.3s ease;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+  display: inline-block;
+  width: 100%;
+}
+
+.timeline-item.left .timeline-content {
+  border-right: 1px solid rgba(255, 123, 0, 0.6);
+}
+
+.timeline-item.right .timeline-content {
+  border-left: 1px solid rgba(255, 123, 0, 0.6);
+}
+
+.timeline-content:hover {
+  border: 1px solid rgba(255, 123, 0, 0.6);
+  box-shadow: 0 10px 40px rgba(255, 123, 0, 0.15);
+  transform: translateY(-5px);
+}
+
+.timeline-step {
+  font-size: 13px;
+  font-weight: 700;
+  color: #ff7b00;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin-bottom: 12px;
+}
+
+.timeline-content h3 {
+  font-size: 28px;
+  color: white;
+  font-weight: 800;
+  margin: 0 0 16px 0;
+  line-height: 1.2;
+}
+
+.timeline-content p {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 16px;
+  line-height: 1.6;
+  margin: 0;
+}
+
+/* Responsive for mobile (line goes to the left) */
+@media screen and (max-width: 768px) {
+  .timeline-container::after {
+    left: 31px;
+  }
+  
+  .timeline-item {
+    width: 100%;
+    padding-left: 70px;
+    padding-right: 0;
+    text-align: left !important;
+  }
+  
+  .timeline-item.right {
+    left: 0;
+  }
+  
+  .timeline-item.left .timeline-dot, 
+  .timeline-item.right .timeline-dot {
+    left: 23px;
+    right: auto;
+  }
+
+  .timeline-item.left .timeline-content {
+    border-right: 1px solid rgba(255, 123, 0, 0.2);
+    border-left: 1px solid rgba(255, 123, 0, 0.6);
+  }
+}
+
+/* News Section */
+.news-section-landing {
+  min-height: 100vh;
+  padding: 100px 24px;
+  position: relative;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.landing-carousel-wrapper {
+  max-width: 1000px; /* Enlarged from 800px */
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+.landing-promo-card {
+  box-sizing: border-box;
+  border-radius: 24px;
+  background: rgba(30, 41, 59, 0.4);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(139, 92, 246, 0.2);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+  min-height: 240px;
+}
+
+@media (min-width: 768px) {
+  .landing-promo-card {
+    flex-direction: row;
+    height: 360px; /* Enlarged from 240px */
+  }
+}
+
+.landing-promo-image-container {
+  position: relative;
+  width: 100%;
+  height: 250px;
+}
+
+@media (min-width: 768px) {
+  .landing-promo-image-container {
+    width: 45%;
+    height: 100%;
+  }
+}
+
+.landing-promo-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.landing-promo-badge {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  background: rgba(139, 92, 246, 0.9);
+  color: white;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+
+.landing-promo-content {
+  padding: 48px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 20px;
+  width: 100%;
+}
+
+@media (min-width: 768px) {
+  .landing-promo-content {
+    width: 55%;
+  }
+}
+
+.landing-promo-content h3 {
+  font-size: 32px;
+  margin: 0;
+  color: white;
+  font-weight: 700;
+}
+
+.landing-promo-content p {
+  font-size: 17px;
+  color: rgba(255, 255, 255, 0.7);
+  line-height: 1.6;
+  margin: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.landing-promo-btn {
+  align-self: flex-start;
+  background: rgba(139, 92, 246, 0.2);
+  color: #c4b5fd;
+  border: 1px solid rgba(139, 92, 246, 0.4);
+  padding: 16px 32px;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  margin-top: 12px;
+}
+
+.landing-promo-btn:hover {
+  background: rgba(139, 92, 246, 0.4);
+  color: white;
+  transform: translateY(-2px);
+}
+
+.landing-carousel-indicators {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.landing-indicator-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2);
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.landing-indicator-dot.active {
+  background: #c4b5fd;
+  width: 32px;
+  border-radius: 6px;
+}
+
+.fade-transition {
+  animation: fadeIn 0.5s ease-in-out;
 }
 
 /* CTA & Footer Section */

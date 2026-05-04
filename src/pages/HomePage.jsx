@@ -15,6 +15,7 @@ import NotificationView from '../components/Dashboard/NotificationView';
 import AddTransactionOverlay from '../components/Dashboard/AddTransactionOverlay';
 import ExpenseCategorization from '../components/Categorization/ExpenseCategorization';
 import { useNavigate } from 'react-router-dom';
+import { newsItems } from '../data/newsData';
 
 const dummyPockets = [
   { id: 1, title: 'Daily Needs', amount: 'Rp 8.200.000', progress: 70, colorClass: 'pocket-blue', Icon: ShoppingBag },
@@ -40,30 +41,6 @@ const HomePage = () => {
   const [activities, setActivities] = useState(dummyActivities);
   const [toastMessage, setToastMessage] = useState(null);
   const [currentNewsIndex, setCurrentNewsIndex] = useState(0);
-
-  const newsItems = [
-    {
-      id: 1,
-      title: 'IHSG Cetak Rekor Baru!',
-      desc: 'Pasar saham Indonesia kembali menghijau hari ini didorong oleh sentimen positif global.',
-      image: '/news-stocks.png',
-      badge: 'SAHAM'
-    },
-    {
-      id: 2,
-      title: 'Harga Emas Antam Naik',
-      desc: 'Harga emas terus melonjak menyusul ketidakpastian ekonomi makro. Waktunya investasi?',
-      image: '/news-gold.png',
-      badge: 'INVESTASI'
-    },
-    {
-      id: 3,
-      title: 'Tren Dompet Digital 2024',
-      desc: 'Penggunaan transaksi non-tunai semakin mendominasi. Simak keuntungan dan tips amannya.',
-      image: '/news-wallet.png',
-      badge: 'FINTECH'
-    }
-  ];
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -329,7 +306,7 @@ const HomePage = () => {
                     <div className="promo-content fade-transition" key={`content-${currentNewsIndex}`}>
                       <h3>{newsItems[currentNewsIndex].title}</h3>
                       <p>{newsItems[currentNewsIndex].desc}</p>
-                      <button className="promo-btn">Baca Selengkapnya</button>
+                      <button className="promo-btn" onClick={() => navigate(`/news/${newsItems[currentNewsIndex].id}`)}>Baca Selengkapnya</button>
                     </div>
                   </div>
                   
