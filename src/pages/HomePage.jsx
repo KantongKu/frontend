@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Bell, Plus, Send, ShoppingBag, Plane, PiggyBank, Utensils, Banknote, ShoppingCart, Home, Wallet, BarChart2, User, Heart } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Bell, Plus, Send, ShoppingBag, Plane, PiggyBank, Utensils, Banknote, ShoppingCart, Home, Wallet, BarChart2, User, Heart, LogOut, Edit, Upload, Keyboard, Receipt, RefreshCw, Camera, ChevronLeft, ChevronRight } from 'lucide-react';
 import './HomePage.css';
 import './HomePage.css';
 import './LandingPage.css'; // For background styles
@@ -11,9 +11,9 @@ import AnalyticsView from '../components/Dashboard/AnalyticsView';
 import ProfileView from '../components/Dashboard/ProfileView';
 import EditProfileView from '../components/Dashboard/EditProfileView';
 import OcrArchiveView from '../components/Dashboard/OcrArchiveView';
+import NotificationView from '../components/Dashboard/NotificationView';
 import AddTransactionOverlay from '../components/Dashboard/AddTransactionOverlay';
 import ExpenseCategorization from '../components/Categorization/ExpenseCategorization';
-import { ChevronLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 const dummyPockets = [
@@ -35,9 +35,42 @@ const HomePage = () => {
   const [showScanner, setShowScanner] = useState(false);
   const [showCreatePocket, setShowCreatePocket] = useState(false);
   const [showAddTransaction, setShowAddTransaction] = useState(null);
+  const [showFabMenu, setShowFabMenu] = useState(false);
   const [pockets, setPockets] = useState(dummyPockets);
   const [activities, setActivities] = useState(dummyActivities);
   const [toastMessage, setToastMessage] = useState(null);
+  const [currentNewsIndex, setCurrentNewsIndex] = useState(0);
+
+  const newsItems = [
+    {
+      id: 1,
+      title: 'IHSG Cetak Rekor Baru!',
+      desc: 'Pasar saham Indonesia kembali menghijau hari ini didorong oleh sentimen positif global.',
+      image: '/news-stocks.png',
+      badge: 'SAHAM'
+    },
+    {
+      id: 2,
+      title: 'Harga Emas Antam Naik',
+      desc: 'Harga emas terus melonjak menyusul ketidakpastian ekonomi makro. Waktunya investasi?',
+      image: '/news-gold.png',
+      badge: 'INVESTASI'
+    },
+    {
+      id: 3,
+      title: 'Tren Dompet Digital 2024',
+      desc: 'Penggunaan transaksi non-tunai semakin mendominasi. Simak keuntungan dan tips amannya.',
+      image: '/news-wallet.png',
+      badge: 'FINTECH'
+    }
+  ];
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentNewsIndex((prev) => (prev + 1) % newsItems.length);
+    }, 5000);
+    return () => clearInterval(timer);
+  }, [newsItems.length]);
 
   const totalBalance = pockets.reduce((acc, pocket) => {
     const val = parseInt(pocket.amount.replace(/\D/g, ''), 10);
@@ -53,7 +86,7 @@ const HomePage = () => {
       setCurrentView('ocr-archive');
     } else if (action === 'edit-profile') {
       setCurrentView('edit-profile');
-    } else if (action === 'logout') {
+    } else if (action === 'logout' || action === 'back-to-landing') {
       navigate('/');
     } else {
       setToastMessage(action);
@@ -124,117 +157,195 @@ const HomePage = () => {
         <div className="bg-orb bg-orb-3"></div>
       </div>
 
-      <div className="mobile-container">
+      {/* Desktop Sidebar */}
+      <aside className="desktop-sidebar">
+        <div 
+          className="sidebar-brand" 
+          onClick={() => navigate('/')} 
+          style={{ cursor: 'pointer' }}
+          title="Kembali ke Landing Page"
+        >
+          <span>Kantongku</span>
+        </div>
+        
+        <nav className="sidebar-nav">
+          <button className={`sidebar-item ${currentView === 'dashboard' ? 'active' : ''}`} onClick={() => setCurrentView('dashboard')}>
+            <Home size={22} />
+            <span>Dashboard</span>
+          </button>
+          <button className={`sidebar-item ${currentView === 'pockets' || currentView === 'pocket-detail' ? 'active' : ''}`} onClick={() => setCurrentView('pockets')}>
+            <Wallet size={22} />
+            <span>Budget Pockets</span>
+          </button>
+          <button className={`sidebar-item ${currentView === 'chart' ? 'active' : ''}`} onClick={() => setCurrentView('chart')}>
+            <BarChart2 size={22} />
+            <span>Analytics</span>
+          </button>
+          <button className={`sidebar-item ${currentView === 'profile' ? 'active' : ''}`} onClick={() => setCurrentView('profile')}>
+            <User size={22} />
+            <span>Profile</span>
+          </button>
+        </nav>
+      </aside>
+
+      <div className="mobile-container desktop-content-area">
         {currentView === 'dashboard' && (
-          <>
+          <div className="dashboard-layout">
             {/* Header */}
             <header className="dash-header">
-          <div className="dash-user">
-            <img src="https://i.pravatar.cc/150?img=11" alt="Profile" className="profile-pic" />
-            <h2>Balance</h2>
-          </div>
-          <button className="dash-btn-icon">
-            <Bell size={24} fill="white" />
-          </button>
-        </header>
-
-        {/* Balance Card */}
-        <div className="balance-card">
-          <p className="balance-label">TOTAL SALDO (SEMUA KANTONG)</p>
-          <h1 className="balance-amount">Rp {totalBalance.toLocaleString('id-ID')}</h1>
-          <div className="balance-actions">
-            <button className="action-btn topup-btn" onClick={() => setShowAddTransaction('income')}>
-              <Banknote size={18} />
-              Pemasukan
-            </button>
-            <button className="action-btn transfer-btn" onClick={() => setShowAddTransaction('expense')}>
-              <ShoppingCart size={18} />
-              Pengeluaran
-            </button>
-          </div>
-        </div>
-
-        {/* Financial Health Card */}
-        <div className="health-card">
-          <div className="health-info">
-            <h3>Financial Health</h3>
-            <p>You've saved 20% more this month!</p>
-          </div>
-          <div className="health-chart">
-            <svg viewBox="0 0 36 36" className="circular-chart">
-              <path className="circle-bg"
-                d="M18 2.0845
-                  a 15.9155 15.9155 0 0 1 0 31.831
-                  a 15.9155 15.9155 0 0 1 0 -31.831"
-              />
-              <path className="circle"
-                strokeDasharray="75, 100"
-                d="M18 2.0845
-                  a 15.9155 15.9155 0 0 1 0 31.831
-                  a 15.9155 15.9155 0 0 1 0 -31.831"
-              />
-              <text x="18" y="21.35" className="percentage">75%</text>
-            </svg>
-          </div>
-        </div>
-
-        {/* Budget Pockets */}
-        <div className="section-header-dash">
-          <h3>Budget Pockets</h3>
-          <button className="view-all-btn" onClick={() => setCurrentView('pockets')}>View All</button>
-        </div>
-        <div className="pockets-grid">
-          {pockets.map(pocket => (
-            <div 
-              key={pocket.id} 
-              className={`pocket-card ${pocket.colorClass}`} 
-              onClick={() => {
-                setSelectedPocket(pocket);
-                setCurrentView('pocket-detail');
-              }}
-            >
-              <div className="pocket-icon-wrapper">
-                <pocket.Icon size={20} />
+              <div className="dash-user">
+                <img src="https://i.pravatar.cc/150?img=11" alt="Profile" className="profile-pic" />
+                <h2>Balance</h2>
               </div>
-              <h4>{pocket.title}</h4>
-              <p>{pocket.amount}</p>
-              <div className="progress-bar-bg">
-                <div className="progress-bar-fill" style={{ width: `${pocket.progress}%` }}></div>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button className="dash-btn-icon" onClick={() => navigate('/')} title="Kembali ke Landing Page">
+                  <ChevronLeft size={24} color="white" />
+                </button>
+                <button className="dash-btn-icon" onClick={() => setCurrentView('notifications')}>
+                  <Bell size={24} fill="white" />
+                </button>
+              </div>
+            </header>
+
+            <div className="dashboard-grid-layout">
+              {/* Left Column */}
+              <div className="dashboard-col-left">
+                {/* Balance Card */}
+                <div className="balance-card">
+                  <p className="balance-label">TOTAL SALDO (SEMUA KANTONG)</p>
+                  <h1 className="balance-amount">Rp {totalBalance.toLocaleString('id-ID')}</h1>
+                  <div className="balance-actions">
+                    <button className="action-btn topup-btn" onClick={() => setShowAddTransaction('income')}>
+                      <Banknote size={18} />
+                      Pemasukan
+                    </button>
+                    <button className="action-btn transfer-btn" onClick={() => setShowAddTransaction('expense')}>
+                      <ShoppingCart size={18} />
+                      Pengeluaran
+                    </button>
+                  </div>
+                </div>
+
+                {/* Budget Pockets */}
+                <div className="section-header-dash">
+                  <h3>Budget Pockets</h3>
+                  <button className="view-all-btn" onClick={() => setCurrentView('pockets')}>View All</button>
+                </div>
+                <div className="pockets-grid">
+                  {pockets.map(pocket => (
+                    <div 
+                      key={pocket.id} 
+                      className={`pocket-card ${pocket.colorClass}`} 
+                      onClick={() => {
+                        setSelectedPocket(pocket);
+                        setCurrentView('pocket-detail');
+                      }}
+                    >
+                      <div className="pocket-icon-wrapper">
+                        <pocket.Icon size={20} />
+                      </div>
+                      <h4>{pocket.title}</h4>
+                      <p>{pocket.amount}</p>
+                      <div className="progress-bar-bg">
+                        <div className="progress-bar-fill" style={{ width: `${pocket.progress}%` }}></div>
+                      </div>
+                    </div>
+                  ))}
+                  <button className="pocket-card pocket-new" onClick={() => setShowCreatePocket(true)}>
+                    <div className="pocket-new-icon">
+                      <Plus size={24} color="black" />
+                    </div>
+                    <p>New Pocket</p>
+                  </button>
+                </div>
+              </div>
+
+              {/* Right Column */}
+              <div className="dashboard-col-right">
+                {/* Financial Health Card */}
+                <div className="health-card">
+                  <div className="health-info">
+                    <h3>Financial Health</h3>
+                    <p>You've saved 20% more this month!</p>
+                  </div>
+                  <div className="health-chart">
+                    <svg viewBox="0 0 36 36" className="circular-chart">
+                      <path className="circle-bg"
+                        d="M18 2.0845
+                          a 15.9155 15.9155 0 0 1 0 31.831
+                          a 15.9155 15.9155 0 0 1 0 -31.831"
+                      />
+                      <path className="circle"
+                        strokeDasharray="75, 100"
+                        d="M18 2.0845
+                          a 15.9155 15.9155 0 0 1 0 31.831
+                          a 15.9155 15.9155 0 0 1 0 -31.831"
+                      />
+                      <text x="18" y="21.35" className="percentage">75%</text>
+                    </svg>
+                  </div>
+                </div>
+
+                {/* Recent Activity */}
+                <div className="section-header-dash">
+                  <h3>Recent Activity</h3>
+                </div>
+                <div className="activity-list">
+                  {activities.map(activity => (
+                    <div key={activity.id} className="activity-item">
+                      <div className={`activity-icon ${activity.iconClass}`}>
+                        <activity.Icon size={20} />
+                      </div>
+                      <div className="activity-details">
+                        <h4>{activity.title}</h4>
+                        <p>{activity.date}</p>
+                      </div>
+                      <div className="activity-amount-box">
+                        <h4 className={activity.type === 'expense' ? 'text-red' : 'text-blue'}>
+                          {activity.amount}
+                        </h4>
+                        <p>{activity.category}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* News Carousel */}
+                <div className="news-carousel-wrapper">
+                  <div className="section-header-dash mb-2">
+                    <h3>Berita Keuangan</h3>
+                  </div>
+                  
+                  <div className="promo-card glass-card">
+                    <div className="promo-image-container">
+                      <img 
+                        src={newsItems[currentNewsIndex].image} 
+                        alt={newsItems[currentNewsIndex].title} 
+                        className="promo-image fade-transition" 
+                        key={`img-${currentNewsIndex}`} 
+                      />
+                      <div className="promo-badge-overlay">{newsItems[currentNewsIndex].badge}</div>
+                    </div>
+                    <div className="promo-content fade-transition" key={`content-${currentNewsIndex}`}>
+                      <h3>{newsItems[currentNewsIndex].title}</h3>
+                      <p>{newsItems[currentNewsIndex].desc}</p>
+                      <button className="promo-btn">Baca Selengkapnya</button>
+                    </div>
+                  </div>
+                  
+                  <div className="carousel-indicators">
+                    {newsItems.map((_, idx) => (
+                      <span 
+                        key={idx} 
+                        className={`indicator-dot ${idx === currentNewsIndex ? 'active' : ''}`}
+                        onClick={() => setCurrentNewsIndex(idx)}
+                      />
+                    ))}
+                  </div>
+                </div>
               </div>
             </div>
-          ))}
-          <button className="pocket-card pocket-new" onClick={() => setShowCreatePocket(true)}>
-            <div className="pocket-new-icon">
-              <Plus size={24} color="black" />
-            </div>
-            <p>New Pocket</p>
-          </button>
-        </div>
-
-        {/* Recent Activity */}
-        <div className="section-header-dash">
-          <h3>Recent Activity</h3>
-        </div>
-        <div className="activity-list">
-          {activities.map(activity => (
-            <div key={activity.id} className="activity-item">
-              <div className={`activity-icon ${activity.iconClass}`}>
-                <activity.Icon size={20} />
-              </div>
-              <div className="activity-details">
-                <h4>{activity.title}</h4>
-                <p>{activity.date}</p>
-              </div>
-              <div className="activity-amount-box">
-                <h4 className={activity.type === 'expense' ? 'text-red' : 'text-blue'}>
-                  {activity.amount}
-                </h4>
-                <p>{activity.category}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-        </>
+          </div>
         )}
 
         {currentView === 'pockets' && (
@@ -258,6 +369,12 @@ const HomePage = () => {
 
         {currentView === 'chart' && (
           <AnalyticsView 
+            onBack={() => setCurrentView('dashboard')}
+          />
+        )}
+
+        {currentView === 'notifications' && (
+          <NotificationView 
             onBack={() => setCurrentView('dashboard')}
           />
         )}
@@ -300,41 +417,71 @@ const HomePage = () => {
       </div>
 
       {/* Bottom Navigation */}
-      <div className="bottom-nav-container">
-        <nav className="bottom-nav">
-          <button className={`nav-item ${currentView === 'dashboard' ? 'active' : ''}`} onClick={() => setCurrentView('dashboard')}>
-            <div className="nav-icon-wrapper">
-              <Home size={22} />
-            </div>
-            <span>Home</span>
-          </button>
-          <button className={`nav-item ${currentView === 'pockets' || currentView === 'pocket-detail' ? 'active' : ''}`} onClick={() => setCurrentView('pockets')}>
-            <div className="nav-icon-wrapper">
-              <Wallet size={22} />
-            </div>
-            <span>Pocket</span>
-          </button>
-          
-          <div className="nav-item-center">
-            <button className="center-fab" onClick={() => setShowScanner(true)}>
-              <Plus size={28} />
+      {currentView !== 'notifications' && (
+        <div className="bottom-nav-container">
+          <nav className="bottom-nav">
+            <button className={`nav-item ${currentView === 'dashboard' ? 'active' : ''}`} onClick={() => setCurrentView('dashboard')}>
+              <div className="nav-icon-wrapper">
+                <Home size={22} />
+              </div>
+              <span>Home</span>
             </button>
-          </div>
-          
-          <button className={`nav-item ${currentView === 'chart' ? 'active' : ''}`} onClick={() => setCurrentView('chart')}>
-            <div className="nav-icon-wrapper">
-              <BarChart2 size={22} />
+            <button className={`nav-item ${currentView === 'pockets' || currentView === 'pocket-detail' ? 'active' : ''}`} onClick={() => setCurrentView('pockets')}>
+              <div className="nav-icon-wrapper">
+                <Wallet size={22} />
+              </div>
+              <span>Pocket</span>
+            </button>
+            
+            <div className="nav-item-center">
+              <button className={`center-fab ${showFabMenu ? 'active' : ''}`} onClick={() => setShowFabMenu(!showFabMenu)}>
+                <Plus size={28} style={{ transform: showFabMenu ? 'rotate(45deg)' : 'none', transition: 'transform 0.2s' }} />
+              </button>
+              
+              {showFabMenu && (
+                <>
+                  <div className="fab-menu-overlay" onClick={() => setShowFabMenu(false)}></div>
+                  <div className="fab-menu">
+                    <button className="fab-menu-item" onClick={() => { setShowFabMenu(false); setShowAddTransaction('expense'); }}>
+                      <Edit size={18} />
+                      <span>Manual</span>
+                    </button>
+                    <button className="fab-menu-item" onClick={() => { setShowFabMenu(false); setShowScanner(true); }}>
+                      <Upload size={18} />
+                      <span>Unggah</span>
+                    </button>
+                    <button className="fab-menu-item" onClick={() => { setShowFabMenu(false); alert('Fitur Input teks segera hadir!'); }}>
+                      <Keyboard size={18} />
+                      <span>Input teks</span>
+                    </button>
+                    <button className="fab-menu-item" onClick={() => { setShowFabMenu(false); alert('Fitur Bagi Tagihan segera hadir!'); }}>
+                      <Receipt size={18} />
+                      <span>Bagi Tagihan</span>
+                    </button>
+                    <button className="fab-menu-item" onClick={() => { setShowFabMenu(false); setShowAddTransaction('expense'); }}>
+                      <RefreshCw size={18} />
+                      <span>Transfer</span>
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
-            <span>Chart</span>
-          </button>
-          <button className={`nav-item ${currentView === 'profile' ? 'active' : ''}`} onClick={() => setCurrentView('profile')}>
-            <div className="nav-icon-wrapper">
-              <User size={22} />
-            </div>
-            <span>Profile</span>
-          </button>
-        </nav>
-      </div>
+            
+            <button className={`nav-item ${currentView === 'chart' ? 'active' : ''}`} onClick={() => setCurrentView('chart')}>
+              <div className="nav-icon-wrapper">
+                <BarChart2 size={22} />
+              </div>
+              <span>Chart</span>
+            </button>
+            <button className={`nav-item ${currentView === 'profile' ? 'active' : ''}`} onClick={() => setCurrentView('profile')}>
+              <div className="nav-icon-wrapper">
+                <User size={22} />
+              </div>
+              <span>Profile</span>
+            </button>
+          </nav>
+        </div>
+      )}
 
       {showScanner && <MobileScannerOverlay onClose={() => setShowScanner(false)} />}
       {showCreatePocket && (
