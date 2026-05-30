@@ -157,6 +157,12 @@
   color: white;
 }
 
+.date-input {
+  padding-left: 48px;
+  cursor: pointer;
+  color-scheme: dark;
+}
+
 .ato-submit-btn {
   margin-top: auto;
   width: 100%;

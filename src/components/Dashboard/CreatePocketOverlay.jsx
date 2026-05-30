@@ -1,43 +1,22 @@
 import React, { useState } from 'react';
-import { X, Sparkles, Check, ChevronDown, Wallet, PiggyBank, Plane, Heart, Home } from 'lucide-react';
+import { X, Sparkles, Check, Wallet } from 'lucide-react';
 import { useExpense } from '../../context/ExpenseContext';
 import './CreatePocketOverlay.css';
 
 const CreatePocketOverlay = ({ onClose, onAddDummyPocket }) => {
   const { monthlyIncome } = useExpense();
   const [pocketName, setPocketName] = useState('');
-  const [pocketType, setPocketType] = useState('Savings');
   const [targetAmount, setTargetAmount] = useState('');
-  const [selectedIcon, setSelectedIcon] = useState('PiggyBank');
   const [isAiProcessing, setIsAiProcessing] = useState(false);
-
-  const pocketTypes = [
-    { value: 'Needs', label: 'Kebutuhan Pokok (Needs)' },
-    { value: 'Wants', label: 'Hiburan/Keinginan (Wants)' },
-    { value: 'Savings', label: 'Tabungan/Investasi (Savings)' }
-  ];
-
-  const icons = [
-    { name: 'PiggyBank', component: PiggyBank },
-    { name: 'Wallet', component: Wallet },
-    { name: 'Plane', component: Plane },
-    { name: 'Heart', component: Heart },
-    { name: 'Home', component: Home }
-  ];
 
   const handleAiRecommendation = () => {
     setIsAiProcessing(true);
     setTimeout(() => {
-      let recommendedRatio = 0;
-      if (pocketType === 'Needs') recommendedRatio = 0.50;
-      else if (pocketType === 'Wants') recommendedRatio = 0.30;
-      else if (pocketType === 'Savings') recommendedRatio = 0.20;
-
-      // Suggest based on ratio and remaining income (simplified logic)
-      const suggestion = monthlyIncome * recommendedRatio;
+      // Rekomendasi alokasi tabungan ideal sebesar 20% dari total pendapatan bulanan
+      const suggestion = Math.round(monthlyIncome * 0.20);
       setTargetAmount(suggestion.toString());
       setIsAiProcessing(false);
-    }, 1500);
+    }, 1200);
   };
 
   const handleCreate = () => {
@@ -46,12 +25,12 @@ const CreatePocketOverlay = ({ onClose, onAddDummyPocket }) => {
       return;
     }
 
-    // Pass data back to Dashboard to add to dummy list for now
+    // Mengirimkan data baru yang hanya memuat nama dan batas anggaran (budget_limit)
     onAddDummyPocket({
       title: pocketName,
       amount: parseInt(targetAmount),
-      iconName: selectedIcon,
-      type: pocketType
+      iconName: 'Wallet',
+      colorClass: 'pocket-blue'
     });
     
     onClose();
@@ -74,37 +53,10 @@ const CreatePocketOverlay = ({ onClose, onAddDummyPocket }) => {
             <label>Nama Kantong</label>
             <input 
               type="text" 
-              placeholder="Contoh: Dana Darurat" 
+              placeholder="Contoh: Belanja Bulanan, Traveling, Tabungan" 
               value={pocketName}
               onChange={(e) => setPocketName(e.target.value)}
             />
-          </div>
-
-          <div className="cp-input-group">
-            <label>Pilih Ikon</label>
-            <div className="cp-icon-selector">
-              {icons.map(icon => (
-                <button 
-                  key={icon.name}
-                  className={`cp-icon-btn ${selectedIcon === icon.name ? 'active' : ''}`}
-                  onClick={() => setSelectedIcon(icon.name)}
-                >
-                  <icon.component size={24} />
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="cp-input-group">
-            <label>Prioritas / Jenis</label>
-            <div className="cp-select-wrapper">
-              <select value={pocketType} onChange={(e) => setPocketType(e.target.value)}>
-                {pocketTypes.map(t => (
-                  <option key={t.value} value={t.value}>{t.label}</option>
-                ))}
-              </select>
-              <ChevronDown className="cp-select-icon" size={16} />
-            </div>
           </div>
         </div>
 
@@ -115,7 +67,7 @@ const CreatePocketOverlay = ({ onClose, onAddDummyPocket }) => {
             <div className="cp-ai-info">
               <Sparkles size={20} className="text-yellow" />
               <div>
-                <h4>Rekomendasi AI</h4>
+                <h4>Rekomendasi AI (20% Savings)</h4>
                 <p>Pendapatan Anda: Rp {monthlyIncome.toLocaleString('id-ID')}</p>
               </div>
             </div>
@@ -129,10 +81,10 @@ const CreatePocketOverlay = ({ onClose, onAddDummyPocket }) => {
           </div>
 
           <div className="cp-input-group mt-16">
-            <label>Target Anggaran (Rp)</label>
+            <label>Target Anggaran / Batas Limit (Rp)</label>
             <input 
               type="number" 
-              placeholder="Masukkan jumlah" 
+              placeholder="Masukkan jumlah target limit" 
               value={targetAmount}
               onChange={(e) => setTargetAmount(e.target.value)}
               className="amount-input"

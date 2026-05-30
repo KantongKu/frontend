@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ChevronLeft, Camera, User, Mail, Phone, Lock, Save } from 'lucide-react';
 import './EditProfileView.css';
 
@@ -7,7 +7,29 @@ const EditProfileView = ({ onBack, onSave }) => {
   const [email, setEmail] = useState('budi.santoso@example.com');
   const [phone, setPhone] = useState('+62 812 3456 7890');
 
+  useEffect(() => {
+    const activeUserJson = localStorage.getItem('activeUser');
+    if (activeUserJson) {
+      const activeUser = JSON.parse(activeUserJson);
+      if (activeUser.name) setName(activeUser.name);
+      if (activeUser.email) setEmail(activeUser.email);
+    }
+  }, []);
+
   const handleSave = () => {
+    const activeUserJson = localStorage.getItem('activeUser');
+    if (activeUserJson) {
+      const activeUser = JSON.parse(activeUserJson);
+      const oldEmail = activeUser.email;
+      activeUser.name = name;
+      activeUser.email = email;
+      
+      localStorage.setItem('activeUser', JSON.stringify(activeUser));
+      localStorage.setItem(`user_${email}`, JSON.stringify(activeUser));
+      if (oldEmail !== email) {
+        localStorage.removeItem(`user_${oldEmail}`);
+      }
+    }
     onSave('Profil berhasil diperbarui!');
     onBack();
   };

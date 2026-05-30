@@ -1,8 +1,24 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { ChevronLeft, User, Settings, Bell, Shield, Download, HelpCircle, LogOut, ChevronRight, BrainCircuit, Medal, Camera } from 'lucide-react';
 import './ProfileView.css';
 
 const ProfileView = ({ onBack, onAction }) => {
+  const [profile, setProfile] = useState({
+    name: 'Budi Santoso',
+    email: 'budi.santoso@example.com'
+  });
+
+  useEffect(() => {
+    const activeUserJson = localStorage.getItem('activeUser');
+    if (activeUserJson) {
+      const activeUser = JSON.parse(activeUserJson);
+      setProfile({
+        name: activeUser.name || 'Budi Santoso',
+        email: activeUser.email || 'budi.santoso@example.com'
+      });
+    }
+  }, []);
+
   return (
     <div className="profile-view">
       <div className="pv-header">
@@ -20,8 +36,8 @@ const ProfileView = ({ onBack, onAction }) => {
             <img src="https://i.pravatar.cc/150?img=11" alt="Profile" className="pv-avatar" />
             <div className="pv-badge">LEVEL 5 SAVER</div>
           </div>
-          <h2 className="pv-name">Budi Santoso</h2>
-          <p className="pv-email">budi.santoso@example.com</p>
+          <h2 className="pv-name">{profile.name}</h2>
+          <p className="pv-email">{profile.email}</p>
           <button className="pv-edit-btn" onClick={() => onAction('edit-profile')}>Edit Profil</button>
         </div>
 

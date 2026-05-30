@@ -1,6 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Bell, Plus, Send, ShoppingBag, Plane, PiggyBank, Utensils, Banknote, ShoppingCart, Home, Wallet, BarChart2, User, Heart, LogOut, Edit, Upload, Keyboard, Receipt, RefreshCw, Camera, ChevronLeft, ChevronRight } from 'lucide-react';
-import './HomePage.css';
 import './HomePage.css';
 import './LandingPage.css'; // For background styles
 import MobileScannerOverlay from '../components/Scanner/MobileScannerOverlay';
@@ -16,6 +15,7 @@ import AddTransactionOverlay from '../components/Dashboard/AddTransactionOverlay
 import ExpenseCategorization from '../components/Categorization/ExpenseCategorization';
 import { useNavigate } from 'react-router-dom';
 import { newsItems } from '../data/newsData';
+import { walletService, transactionService } from '../services/api';
 
 const dummyPockets = [
   { id: 1, title: 'Daily Needs', amount: 'Rp 8.200.000', progress: 70, colorClass: 'pocket-blue', Icon: ShoppingBag },
@@ -37,10 +37,153 @@ const HomePage = () => {
   const [showCreatePocket, setShowCreatePocket] = useState(false);
   const [showAddTransaction, setShowAddTransaction] = useState(null);
   const [showFabMenu, setShowFabMenu] = useState(false);
-  const [pockets, setPockets] = useState(dummyPockets);
-  const [activities, setActivities] = useState(dummyActivities);
+  const [pockets, setPockets] = useState([]);
+  const [activities, setActivities] = useState([]);
   const [toastMessage, setToastMessage] = useState(null);
   const [currentNewsIndex, setCurrentNewsIndex] = useState(0);
+  const [userName, setUserName] = useState('Budi Santoso');
+
+  const fetchDashboardData = useCallback(() => {
+    walletService.getAll()
+    .then((fetchedPockets) => {
+      // Fetch transactions for each individual wallet
+      const txPromises = fetchedPockets.map(pocket =>
+        transactionService.getAll(pocket.id)
+          .catch(err => {
+            console.error(`Gagal mengambil transaksi untuk dompet ${pocket.id}:`, err);
+            return [];
+          })
+      );
+
+      return Promise.all(txPromises)
+      .then((txResults) => {
+        // Flatten transactions from all pockets
+        let fetchedTx = txResults.flat();
+
+        // Synthesize virtual "Saldo Awal" transactions for pockets that have a balance but no starting transaction
+        fetchedPockets.forEach(pocket => {
+          const initialBal = Number(pocket.balance || 0);
+          const hasStartingTx = fetchedTx.some(tx => 
+            Number(tx.wallet_id || tx.walletId) === Number(pocket.id) && 
+            tx.title.toLowerCase().includes('saldo awal')
+          );
+          if (initialBal > 0 && !hasStartingTx) {
+            let dateStr = 'Baru saja';
+            const dateVal = pocket.createdAt;
+            if (dateVal) {
+              const d = new Date(dateVal);
+              if (!isNaN(d.getTime())) {
+                dateStr = d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }) + ', ' + d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+              }
+            }
+            fetchedTx.push({
+              id: `virtual-${pocket.id}`,
+              wallet_id: pocket.id,
+              title: `Saldo Awal ${pocket.title}`,
+              date: dateStr,
+              amount: `+ Rp ${initialBal.toLocaleString('id-ID')}`,
+              amountVal: initialBal,
+              category: 'Pemasukan',
+              type: 'income',
+              Icon: Banknote,
+              iconClass: 'icon-green',
+              dateRaw: dateVal || new Date().toISOString()
+            });
+          }
+        });
+
+        // Sort transactions globally by dateRaw in descending order (newest first)
+        fetchedTx.sort((a, b) => new Date(b.dateRaw) - new Date(a.dateRaw));
+
+        // Calculate sisa saldo and usage progress in real-time from transactions
+        const updatedPockets = fetchedPockets.map(pocket => {
+          const pocketTx = fetchedTx.filter(tx => Number(tx.wallet_id || tx.walletId) === Number(pocket.id));
+          
+          // Sum incomes (excluding initial onboarding/virtual starting transactions to avoid double counting starting balance)
+          const totalIncome = pocketTx
+            .filter(tx => tx.type === 'income' && !tx.title.toLowerCase().includes('saldo awal'))
+            .reduce((sum, tx) => sum + (tx.amountVal || 0), 0);
+            
+          // Sum expenses
+          const totalExpense = pocketTx
+            .filter(tx => tx.type === 'expense')
+            .reduce((sum, tx) => sum + (tx.amountVal || 0), 0);
+            
+          const initialBudget = Number(pocket.balance || 0);
+          const currentBalance = initialBudget + totalIncome - totalExpense;
+          
+          // Progress based on expenses vs initial budget limit
+          const progress = initialBudget > 0 
+            ? Math.min(Math.round((totalExpense / initialBudget) * 100), 100) 
+            : 0;
+            
+          return {
+            ...pocket,
+            balance: currentBalance,
+            amount: `Rp ${currentBalance.toLocaleString('id-ID')}`,
+            progress
+          };
+        });
+
+        setPockets(updatedPockets);
+        setActivities(fetchedTx);
+
+        // Update selectedPocket state if active to trigger real-time updates inside PocketDetail
+        setSelectedPocket(prev => {
+          if (!prev) return null;
+          const freshSelected = updatedPockets.find(p => p.id === prev.id);
+          return freshSelected || prev;
+        });
+      });
+    })
+    .catch(err => {
+      console.error("Gagal mengambil data dashboard:", err);
+    });
+  }, []);
+
+  // Load dynamic session and onboarding pocket on mount
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      navigate('/login', { replace: true });
+      return;
+    }
+
+    const activeUserJson = localStorage.getItem('activeUser');
+    let email = '';
+    if (activeUserJson) {
+      const activeUser = JSON.parse(activeUserJson);
+      email = activeUser.email;
+      if (activeUser.name) {
+        setUserName(activeUser.name);
+      }
+    }
+
+    // Check if onboarding completed for this user.
+    // If not completed, check if they already have wallets in database.
+    const onboardingCompleted = localStorage.getItem(`onboarding_completed_${email}`) === 'true';
+    if (!onboardingCompleted) {
+      walletService.getAll()
+        .then(fetchedPockets => {
+          if (fetchedPockets.length > 0) {
+            // Implicitly completed!
+            localStorage.setItem(`onboarding_completed_${email}`, 'true');
+            setPockets(fetchedPockets);
+            fetchDashboardData();
+          } else {
+            // Truly not completed. Redirect to onboarding!
+            navigate('/onboarding', { replace: true });
+          }
+        })
+        .catch(err => {
+          console.error("Gagal memeriksa status onboarding:", err);
+          // If API fails, fallback to onboarding page to be safe
+          navigate('/onboarding', { replace: true });
+        });
+    } else {
+      fetchDashboardData();
+    }
+  }, [fetchDashboardData, navigate]);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -50,9 +193,36 @@ const HomePage = () => {
   }, [newsItems.length]);
 
   const totalBalance = pockets.reduce((acc, pocket) => {
-    const val = parseInt(pocket.amount.replace(/\D/g, ''), 10);
-    return acc + (isNaN(val) ? 0 : val);
+    return acc + (pocket.balance || 0);
   }, 0);
+
+  // Calculate dynamic financial health based on income and expenses
+  const totalIncome = activities
+    .filter(tx => tx.type === 'income')
+    .reduce((sum, tx) => sum + (tx.amountVal || 0), 0);
+
+  const totalExpense = activities
+    .filter(tx => tx.type === 'expense')
+    .reduce((sum, tx) => sum + (tx.amountVal || 0), 0);
+
+  const healthScore = totalIncome > 0
+    ? Math.max(0, Math.min(100, Math.round(((totalIncome - totalExpense) / totalIncome) * 100)))
+    : 75; // Fallback to 75% if no income yet
+
+  let healthMessage = "Keuangan Anda seimbang. Mulai mencatat pengeluaran Anda!";
+  if (totalIncome > 0) {
+    if (healthScore >= 90) {
+      healthMessage = "Luar biasa! Pengeluaran Anda sangat minim dibanding pemasukan.";
+    } else if (healthScore >= 75) {
+      healthMessage = "Keuangan Anda sehat! Tabungan bulanan berjalan optimal.";
+    } else if (healthScore >= 50) {
+      healthMessage = "Kondisi stabil. Harap perhatikan pos pengeluaran sekunder Anda.";
+    } else if (healthScore >= 30) {
+      healthMessage = "Kondisi agak ketat. Kurangi pengeluaran non-esensial!";
+    } else {
+      healthMessage = "Waspada! Pengeluaran bulanan hampir melebihi pemasukan Anda.";
+    }
+  }
 
   const handleProfileAction = (action) => {
     if (action === 'ai-budgeting') {
@@ -64,6 +234,8 @@ const HomePage = () => {
     } else if (action === 'edit-profile') {
       setCurrentView('edit-profile');
     } else if (action === 'logout' || action === 'back-to-landing') {
+      localStorage.removeItem('token');
+      localStorage.removeItem('activeUser');
       navigate('/');
     } else {
       setToastMessage(action);
@@ -72,63 +244,65 @@ const HomePage = () => {
   };
 
   const handleAddDummyPocket = (newPocketData) => {
-    // Map the selected iconName to the actual Lucide component
-    const iconMap = {
-      PiggyBank, Wallet, Plane, Heart, Home
-    };
-    
-    const newPocket = {
-      id: Date.now(),
-      title: newPocketData.title,
-      amount: `Rp ${newPocketData.amount.toLocaleString('id-ID')}`,
-      progress: 0,
-      colorClass: 'pocket-green', // default color
-      Icon: iconMap[newPocketData.iconName] || PiggyBank
-    };
-    
-    setPockets([...pockets, newPocket]);
+    walletService.create({
+      name: newPocketData.title,
+      balance: Number(newPocketData.amount || 0),
+      icon: newPocketData.iconName || 'PiggyBank',
+      color: newPocketData.colorClass || 'pocket-green'
+    })
+    .then((createdWallet) => {
+      const initialBal = Number(newPocketData.amount || 0);
+      if (initialBal > 0 && createdWallet && createdWallet.id) {
+        return transactionService.create({
+          wallet_id: createdWallet.id,
+          amount: initialBal,
+          type: 'income',
+          description: `Saldo Awal ${createdWallet.title}`,
+          category: 'Pemasukan'
+        });
+      }
+    })
+    .then(() => {
+      fetchDashboardData();
+      setToastMessage('Berhasil membuat Kantong Anggaran Baru!');
+      setTimeout(() => setToastMessage(null), 3000);
+    })
+    .catch(err => {
+      console.error("Gagal membuat kantong anggaran:", err);
+      alert("Gagal membuat kantong anggaran di server.");
+    });
   };
 
   const handleAddTransaction = (data) => {
-    // data = { type, amount, description, pocketId }
-    
-    // Update pocket balance
-    const updatedPockets = pockets.map(p => {
-      if (p.id === data.pocketId) {
-        const currentAmount = parseInt(p.amount.replace(/\D/g, ''), 10);
-        const newAmount = data.type === 'income' ? currentAmount + data.amount : currentAmount - data.amount;
-        return { ...p, amount: `Rp ${newAmount.toLocaleString('id-ID')}` };
-      }
-      return p;
+    // data = { type, amount, description, pocketId, transactionDate }
+    transactionService.create({
+      wallet_id: data.pocketId,
+      amount: Number(data.amount),
+      type: data.type || 'expense',
+      description: data.description,
+      category: data.type === 'income' ? 'Income' : 'Lainnya',
+      transaction_date: data.transactionDate
+    })
+    .then(() => {
+      fetchDashboardData();
+      setShowAddTransaction(null);
+      setToastMessage(`Berhasil mencatat ${data.type === 'income' ? 'pemasukan' : 'pengeluaran'}`);
+      setTimeout(() => setToastMessage(null), 3000);
+    })
+    .catch(err => {
+      console.error("Gagal menambahkan transaksi:", err);
+      alert("Gagal menambahkan transaksi di server.");
     });
-    setPockets(updatedPockets);
-
-    // Add activity
-    const newActivity = {
-      id: Date.now(),
-      title: data.description,
-      date: 'Baru saja',
-      amount: `${data.type === 'income' ? '+' : '-'} Rp ${data.amount.toLocaleString('id-ID')}`,
-      category: data.type === 'income' ? 'Income' : 'Expense',
-      type: data.type,
-      Icon: data.type === 'income' ? Banknote : ShoppingCart,
-      iconClass: data.type === 'income' ? 'icon-green' : 'icon-red'
-    };
-    setActivities([newActivity, ...activities]);
-    
-    setShowAddTransaction(null);
-    setToastMessage(`Berhasil mencatat ${data.type === 'income' ? 'pemasukan' : 'pengeluaran'}`);
-    setTimeout(() => setToastMessage(null), 3000);
   };
 
   return (
     <div className="mobile-dashboard landing-page">
       {/* Background from Landing Page */}
       <div className="fixed-background">
-        <div className="ambient-glow glow-tl"></div>
-        <div className="ambient-glow glow-tr"></div>
-        <div className="ambient-glow glow-bl"></div>
-        <div className="ambient-glow glow-br"></div>
+        <div className="bg-glow bg-glow-tl"></div>
+        <div className="bg-glow bg-glow-tr"></div>
+        <div className="bg-glow bg-glow-bl"></div>
+        <div className="bg-glow bg-glow-br"></div>
         <div className="bg-orb bg-orb-1"></div>
         <div className="bg-orb bg-orb-2"></div>
         <div className="bg-orb bg-orb-3"></div>
@@ -172,7 +346,10 @@ const HomePage = () => {
             <header className="dash-header">
               <div className="dash-user">
                 <img src="https://i.pravatar.cc/150?img=11" alt="Profile" className="profile-pic" />
-                <h2>Balance</h2>
+                <div>
+                  <span style={{ fontSize: '12px', color: 'rgba(255, 255, 255, 0.6)', display: 'block', textTransform: 'uppercase', letterSpacing: '1px' }}>Halo, {userName.split(' ')[0]}</span>
+                  <h2 style={{ margin: 0, fontSize: '18px', fontWeight: '700' }}>Balance</h2>
+                </div>
               </div>
               <div style={{ display: 'flex', gap: '8px' }}>
                 <button className="dash-btn-icon" onClick={() => navigate('/')} title="Kembali ke Landing Page">
@@ -243,7 +420,7 @@ const HomePage = () => {
                 <div className="health-card">
                   <div className="health-info">
                     <h3>Financial Health</h3>
-                    <p>You've saved 20% more this month!</p>
+                    <p>{healthMessage}</p>
                   </div>
                   <div className="health-chart">
                     <svg viewBox="0 0 36 36" className="circular-chart">
@@ -253,12 +430,12 @@ const HomePage = () => {
                           a 15.9155 15.9155 0 0 1 0 -31.831"
                       />
                       <path className="circle"
-                        strokeDasharray="75, 100"
+                        strokeDasharray={`${healthScore}, 100`}
                         d="M18 2.0845
                           a 15.9155 15.9155 0 0 1 0 31.831
                           a 15.9155 15.9155 0 0 1 0 -31.831"
                       />
-                      <text x="18" y="21.35" className="percentage">75%</text>
+                      <text x="18" y="21.35" className="percentage">{healthScore}%</text>
                     </svg>
                   </div>
                 </div>
@@ -341,6 +518,7 @@ const HomePage = () => {
           <PocketDetail 
             pocket={selectedPocket}
             onBack={() => setCurrentView('pockets')}
+            onRefresh={fetchDashboardData}
           />
         )}
 

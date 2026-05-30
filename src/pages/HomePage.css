@@ -385,16 +385,40 @@
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 16px;
+  max-height: 320px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 4px;
+}
+
+.pockets-grid::-webkit-scrollbar {
+  width: 6px;
+}
+
+.pockets-grid::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 3px;
+}
+
+.pockets-grid::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 3px;
+}
+
+.pockets-grid::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.25);
 }
 
 .pocket-card {
   background: rgba(255, 255, 255, 0.05);
   border-radius: 24px;
-  padding: 20px;
+  padding: 16px 20px;
   display: flex;
   flex-direction: column;
   border: 1px solid rgba(255, 255, 255, 0.05);
   box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+  min-height: 160px;
+  box-sizing: border-box;
 }
 
 .pocket-blue {
@@ -432,8 +456,10 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: 24px;
+  margin-bottom: 16px;
   background: rgba(255, 255, 255, 0.1);
+  align-self: flex-start;
+  flex-shrink: 0;
 }
 
 .pocket-blue .pocket-icon-wrapper { color: #3B82F6; }
@@ -461,7 +487,7 @@
 .pocket-card p {
   font-size: 13px;
   color: rgba(255, 255, 255, 0.6);
-  margin: 0 0 16px 0;
+  margin: 0 0 12px 0;
 }
 
 .pocket-new p {
@@ -497,6 +523,27 @@
   gap: 24px;
   backdrop-filter: blur(10px);
   border: 1px solid rgba(255, 255, 255, 0.05);
+  max-height: 280px;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.activity-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.activity-list::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 3px;
+}
+
+.activity-list::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 3px;
+}
+
+.activity-list::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.25);
 }
 
 .activity-item {
@@ -803,19 +850,27 @@
     overflow: hidden; /* FORCE NO SCROLLING */
   }
   
+  .dashboard-layout {
+    flex: 1;
+    min-height: 0;
+  }
+  
   /* Desktop Dashboard Grid */
   .dashboard-grid-layout {
     display: grid;
     grid-template-columns: 1.4fr 1fr;
     gap: 32px;
-    align-items: start;
-    height: 100%;
+    align-items: stretch;
+    flex: 1;
+    min-height: 0;
   }
   
   .dashboard-col-left {
     display: flex;
     flex-direction: column;
     gap: 16px; /* Tighter gap */
+    min-height: 0;
+    overflow: hidden;
   }
   
   .dashboard-col-right {
@@ -900,6 +955,9 @@
   .pockets-grid {
     grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
     gap: 16px;
+    flex: 1;
+    min-height: 0;
+    max-height: none;
   }
   
   /* Compact Left Column Elements */
@@ -913,26 +971,38 @@
   }
   
   .pocket-card {
-    padding: 20px;
-    min-height: 140px; /* Slightly taller */
+    padding: 16px 20px;
+    min-height: 160px;
   }
   
-  .pocket-icon-wrapper {
-    width: 40px;
-    height: 40px;
-  }
-  
-  .pocket-card h4 {
-    font-size: 15px;
-    margin: 10px 0 6px 0;
-  }
-  
-  .pocket-card p {
-    font-size: 13px;
-    margin-bottom: 12px;
-  }
-  
+
   .pocket-new {
-    min-height: 140px; /* Slightly taller */
+    min-height: 160px;
   }
+}
+
+/* Toast Notification (Glassmorphism) */
+.toast-notification {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(30, 30, 35, 0.7);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: white;
+  padding: 16px 24px;
+  border-radius: 16px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+  z-index: 9999;
+  font-size: 15px;
+  font-weight: 500;
+  text-align: center;
+  animation: slideDownFade 0.3s ease-out forwards;
+}
+
+@keyframes slideDownFade {
+  from { opacity: 0; transform: translate(-50%, -20px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
 }
