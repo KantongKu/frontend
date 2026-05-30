@@ -12,13 +12,14 @@ const LandingPage = () => {
   const [pageLoaded, setPageLoaded] = useState(false);
   const [lang, setLang] = useState('id'); // Default to Indonesian
   const [tiles, setTiles] = useState([]);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const navRefs = useRef([]);
   const timelineRefs = useRef([]);
 
   const t = {
     en: {
       home: "Home", features: "Features", about: "About", team: "Our Team", news: "News",
-      register: "Register",
+      register: "Register", login: "Login",
       digitalTrack: "DIGITAL TRACK", heroTitle1: "Track money. Split bills.", heroTitle2: "Stress less.",
       heroDesc: "Kantongku helps you track expenses, split bills with friends, and stay on budget — without boring spreadsheets.",
       getStarted: "GET STARTED",
@@ -40,7 +41,7 @@ const LandingPage = () => {
     },
     id: {
       home: "Beranda", features: "Fitur", about: "Tentang", team: "Tim Kami", news: "Berita",
-      register: "Daftar",
+      register: "Daftar", login: "Masuk",
       digitalTrack: "PELACAK DIGITAL", heroTitle1: "Lacak uang. Bagi tagihan.", heroTitle2: "Bebas stres.",
       heroDesc: "KantongKu membantu Anda melacak pengeluaran, membagi tagihan dengan teman, dan menjaga anggaran — tanpa spreadsheet yang membosankan.",
       getStarted: "MULAI SEKARANG",
@@ -63,6 +64,11 @@ const LandingPage = () => {
   };
 
   const currentT = t[lang];
+
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    setIsLoggedIn(!!token);
+  }, []);
 
   useEffect(() => {
     // Generate 144 tiles (12x12 grid) with random animation delays
@@ -197,9 +203,20 @@ const LandingPage = () => {
             >
               {lang === 'en' ? 'ID' : 'EN'}
             </button>
-            <Link to="/register" className="nav-button">
-              {currentT.register}
-            </Link>
+            {isLoggedIn ? (
+              <Link to="/dashboard" className="nav-button">
+                Dashboard
+              </Link>
+            ) : (
+              <>
+                <Link to="/login" className="nav-login-link">
+                  {currentT.login}
+                </Link>
+                <Link to="/register" className="nav-button">
+                  {currentT.register}
+                </Link>
+              </>
+            )}
           </div>
         </div>
       </nav>
@@ -227,7 +244,7 @@ const LandingPage = () => {
               </p>
               
               <div className="hero-actions">
-                <Link to="/register" className="btn-glass">
+                <Link to={isLoggedIn ? "/dashboard" : "/register"} className="btn-glass">
                   {currentT.getStarted}
                 </Link>
               </div>
@@ -305,19 +322,19 @@ const LandingPage = () => {
 
           <div className="team-gallery">
              <div className="team-member-card size-small">
-               <img src="/team_member.png" alt="Team member" />
+               <img src="/team_1.png" alt="Team member 1" />
              </div>
              <div className="team-member-card size-medium">
-               <img src="/team_member.png" alt="Team member" />
+               <img src="/team_2.png" alt="Team member 2" />
              </div>
              <div className="team-member-card size-large">
-               <img src="/team_member.png" alt="Team member" />
+               <img src="/team_3.png" alt="Team member 3" />
              </div>
              <div className="team-member-card size-medium">
-               <img src="/team_member.png" alt="Team member" />
+               <img src="/team_4.png" alt="Team member 4" />
              </div>
              <div className="team-member-card size-small">
-               <img src="/team_member.png" alt="Team member" />
+               <img src="/team_5.png" alt="Team member 5" />
              </div>
           </div>
         </div>

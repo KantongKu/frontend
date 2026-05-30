@@ -8,6 +8,15 @@
   position: relative; /* ensure curtain is bounded */
 }
 
+/* Hide scrollbar for the whole page when LandingPage is active (or globally) */
+body::-webkit-scrollbar {
+  display: none;
+}
+body {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+
 /* Tile Reveal Animation */
 .tile-curtain-container {
   position: fixed;
@@ -155,6 +164,21 @@
   transform: scale(1.05);
   box-shadow: 0 4px 20px rgba(255, 123, 0, 0.6);
   border: 1px solid rgba(255, 170, 80, 0.8);
+}
+
+.nav-login-link {
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: all 0.3s ease;
+  padding: 8px 16px;
+  border-radius: 20px;
+}
+
+.nav-login-link:hover {
+  color: white;
+  background: rgba(255, 255, 255, 0.08);
 }
 
 .lang-toggle-btn {

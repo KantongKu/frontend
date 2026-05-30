@@ -1,35 +1,75 @@
-import React, { useState } from 'react';
-import { ChevronLeft, MoreVertical, Plus, Utensils, ShoppingCart, ArrowDownCircle, ArrowUpCircle } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { ChevronLeft, MoreVertical, Plus, Utensils, ShoppingCart, ArrowDownCircle, ArrowUpCircle, Banknote } from 'lucide-react';
 import AddTransactionOverlay from './AddTransactionOverlay';
+import { transactionService } from '../../services/api';
 import './PocketDetail.css';
 
-const dummyPocketActivities = [
-  { id: 1, title: 'Starbucks', date: 'Today, 08:30 AM', amount: '- Rp 55.000', type: 'expense', Icon: Utensils, iconClass: 'icon-blue' },
-  { id: 2, title: 'Indomaret', date: 'Yesterday, 19:20 PM', amount: '- Rp 120.000', type: 'expense', Icon: ShoppingCart, iconClass: 'icon-white' },
-];
-
-const PocketDetail = ({ pocket, onBack }) => {
-  const [transactions, setTransactions] = useState(dummyPocketActivities);
+const PocketDetail = ({ pocket, onBack, onRefresh }) => {
+  const [transactions, setTransactions] = useState([]);
   const [showAddOverlay, setShowAddOverlay] = useState(false);
+
+  useEffect(() => {
+    if (pocket && pocket.id) {
+      transactionService.getAll(pocket.id)
+        .then(txs => {
+          const hasStartingTx = txs.some(tx => tx.title.toLowerCase().includes('saldo awal'));
+          const initialBal = Number(pocket.balance || 0);
+          if (!hasStartingTx && initialBal > 0) {
+            let dateStr = 'Baru saja';
+            const dateVal = pocket.createdAt;
+            if (dateVal) {
+              const d = new Date(dateVal);
+              if (!isNaN(d.getTime())) {
+                dateStr = d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }) + ', ' + d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+              }
+            }
+            const virtualTx = {
+              id: `virtual-${pocket.id}`,
+              wallet_id: pocket.id,
+              title: `Saldo Awal ${pocket.title}`,
+              date: dateStr,
+              amount: `+ Rp ${initialBal.toLocaleString('id-ID')}`,
+              amountVal: initialBal,
+              category: 'Pemasukan',
+              type: 'income',
+              Icon: Banknote,
+              iconClass: 'icon-green'
+            };
+            setTransactions([virtualTx, ...txs]);
+          } else {
+            setTransactions(txs);
+          }
+        })
+        .catch(err => {
+          console.error("Gagal mengambil transaksi untuk dompet ini:", err);
+        });
+    }
+  }, [pocket]);
 
   if (!pocket) return null;
 
   const handleAddTransaction = (newTx) => {
-    const now = new Date();
-    const formattedDate = `Today, ${now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })}`;
-    
-    const newActivity = {
-      id: Date.now(),
-      title: newTx.description || 'New Transaction',
-      date: formattedDate,
-      amount: `${newTx.type === 'expense' ? '-' : '+'} Rp ${newTx.amount.toLocaleString('id-ID')}`,
-      type: newTx.type,
-      Icon: newTx.type === 'expense' ? ArrowUpCircle : ArrowDownCircle,
-      iconClass: newTx.type === 'expense' ? 'icon-white' : 'icon-blue'
-    };
-
-    setTransactions([newActivity, ...transactions]);
-    setShowAddOverlay(false);
+    transactionService.create({
+      wallet_id: pocket.id,
+      amount: Number(newTx.amount),
+      type: newTx.type || 'expense',
+      description: newTx.description,
+      category: newTx.type === 'income' ? 'Income' : 'Lainnya',
+      transaction_date: newTx.transactionDate
+    })
+    .then(() => {
+      // Reload transactions
+      transactionService.getAll(pocket.id)
+        .then(txs => {
+          setTransactions(txs);
+        });
+      if (onRefresh) onRefresh();
+      setShowAddOverlay(false);
+    })
+    .catch(err => {
+      console.error("Gagal menambah transaksi:", err);
+      alert("Gagal menambahkan transaksi di server.");
+    });
   };
 
   return (

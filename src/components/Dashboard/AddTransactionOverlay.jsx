@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, ArrowDownCircle, ArrowUpCircle, Wallet } from 'lucide-react';
+import { X, ArrowDownCircle, ArrowUpCircle, Wallet, Calendar } from 'lucide-react';
 import './AddTransactionOverlay.css';
 
 const AddTransactionOverlay = ({ type = 'expense', pockets, onClose, onSubmit }) => {
@@ -7,6 +7,7 @@ const AddTransactionOverlay = ({ type = 'expense', pockets, onClose, onSubmit })
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
   const [selectedPocketId, setSelectedPocketId] = useState(pockets.length > 0 ? pockets[0].id : '');
+  const [transactionDate, setTransactionDate] = useState(new Date().toISOString().split('T')[0]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -19,7 +20,8 @@ const AddTransactionOverlay = ({ type = 'expense', pockets, onClose, onSubmit })
       type: transactionType,
       amount: numAmount,
       description,
-      pocketId: selectedPocketId
+      pocketId: selectedPocketId,
+      transactionDate
     });
   };
 
@@ -87,6 +89,19 @@ const AddTransactionOverlay = ({ type = 'expense', pockets, onClose, onSubmit })
                   <option key={p.id} value={p.id}>{p.title}</option>
                 ))}
               </select>
+            </div>
+          </div>
+
+          <div className="ato-form-group">
+            <label>Tanggal Transaksi</label>
+            <div className="ato-pocket-select">
+              <Calendar size={20} className="ato-input-icon" />
+              <input 
+                type="date" 
+                value={transactionDate}
+                onChange={(e) => setTransactionDate(e.target.value)}
+                className="ato-input date-input"
+              />
             </div>
           </div>
 
