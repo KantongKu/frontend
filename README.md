@@ -1,16 +1,124 @@
-# React + Vite
+# 💼 KantongKu - Smart Expense Tracker
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+**KantongKu** adalah aplikasi web pengelolaan keuangan pribadi yang dirancang khusus untuk membantu Anda mengelola pengeluaran dengan lebih efisien. Dengan fitur pemindai struk berbasis OCR, kategorisasi otomatis, dan dashboard interaktif, KantongKu membuat manajemen keuangan menjadi mudah dan menyenangkan.
 
-Currently, two official plugins are available:
+## ✨ Fitur Utama
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+### 📸 Smart Receipt Scanner
+- Upload atau ambil foto struk belanja
+- Ekstraksi otomatis informasi penting (nama toko, tanggal, total harga)
+- Sinkronisasi dengan sistem pengelolaan pengeluaran
 
-## React Compiler
+### 🏷️ Automated Expense Categorization
+- Kategorisasi otomatis pengeluaran berdasarkan deskripsi
+- 7 kategori pengeluaran: Makanan & Minuman, Transportasi, Hiburan, Utilitas, Kesehatan, Pendidikan, Lainnya
+- Interface yang user-friendly untuk mengelola kategori
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+### 📊 Interactive Financial Dashboard
+- Visualisasi pengeluaran dengan grafik yang menarik
+- Tracking budget real-time per kategori
+- Tren pengeluaran mingguan dan analitik mendalam
+- Indikator status budget (normal, warning, critical)
 
-## Expanding the ESLint configuration
+## 🚀 Getting Started
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+### Prerequisites
+- Node.js (v14 atau lebih tinggi)
+- npm atau yarn
+
+### Installation
+
+1. **Clone repository** (jika menggunakan Git)
+```bash
+git clone <repository-url>
+cd frontend
+```
+
+2. **Install dependencies**
+```bash
+npm install --legacy-peer-deps
+```
+
+3. **Setup environment variables**
+Buat file `.env` di root project:
+```
+VITE_API_URL=http://localhost:5000/api
+```
+
+4. **Run development server**
+```bash
+npm run dev
+```
+
+Server akan berjalan di `http://localhost:5173`
+
+## 📁 Project Structure
+
+```
+src/
+├── components/
+│   ├── Dashboard/          # Dashboard overview dan visualisasi
+│   ├── Scanner/            # Receipt scanner interface
+│   ├── Categorization/     # Expense categorization view
+│   └── Layout/             # Header dan navigation
+├── context/
+│   └── ExpenseContext.jsx  # Global state management
+├── pages/
+│   ├── HomePage.jsx        # Main dashboard page
+│   ├── ScannerPage.jsx     # Scanner page
+│   └── CategorizationPage.jsx # Categorization page
+├── services/
+│   └── api.js              # API service calls
+├── styles/
+│   └── globals.css         # Global styling
+├── App.jsx                 # Main app component
+├── main.jsx                # Entry point
+└── index.css               # Root styles
+```
+
+## 📚 Available Scripts
+
+### Development
+```bash
+npm run dev
+```
+Jalankan aplikasi dalam mode development dengan hot reload.
+
+### Build for Production
+```bash
+npm run build
+```
+Build aplikasi untuk production. Output akan tersimpan di folder `dist/`.
+
+### Preview Production Build
+```bash
+npm run preview
+```
+Preview production build secara lokal.
+
+### Linting
+```bash
+npm run lint
+```
+Check code quality dengan ESLint.
+
+## 🔌 API Integration
+
+Aplikasi ini siap untuk diintegrasikan dengan backend API. Update file `src/services/api.js` dengan URL backend Anda.
+
+## 🛠️ Tech Stack
+
+- **React 19** - UI library
+- **Vite** - Build tool
+- **React Router** - Navigation
+- **Recharts** - Data visualization
+- **Lucide React** - Icons
+- **Axios** - HTTP client
+
+## 📱 Responsive Design
+
+Aplikasi ini sepenuhnya responsive untuk Desktop, Tablet, dan Mobile.
+
+---
+
+**Made with ❤️ by KantongKu Team**

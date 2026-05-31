@@ -1,0 +1,198 @@
+.profile-view {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.pv-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.pv-header h2 {
+  color: white;
+  font-size: 20px;
+  font-weight: 700;
+  margin: 0;
+}
+
+.pv-back-btn {
+  background: transparent;
+  border: none;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+  cursor: pointer;
+  margin-left: -8px;
+}
+
+.pv-content {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding-bottom: 40px;
+}
+
+/* User Card */
+.pv-user-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 32px 24px;
+}
+
+.pv-avatar-wrapper {
+  position: relative;
+  margin-bottom: 16px;
+}
+
+.pv-avatar {
+  width: 90px;
+  height: 90px;
+  border-radius: 50%;
+  border: 3px solid #3b82f6;
+  object-fit: cover;
+}
+
+.pv-badge {
+  position: absolute;
+  bottom: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
+  color: #111;
+  font-size: 11px;
+  font-weight: 800;
+  padding: 4px 12px;
+  border-radius: 12px;
+  letter-spacing: 1px;
+  white-space: nowrap;
+  box-shadow: 0 4px 10px rgba(255, 165, 0, 0.3);
+}
+
+.pv-name {
+  color: white;
+  font-size: 22px;
+  font-weight: 700;
+  margin: 0 0 4px 0;
+}
+
+.pv-email {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 14px;
+  margin: 0 0 16px 0;
+}
+
+.pv-edit-btn {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: white;
+  border-radius: 20px;
+  padding: 8px 20px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.pv-edit-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* Menu Section */
+.pv-menu-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.pv-menu-section h3 {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin: 0 0 0 12px;
+}
+
+.pv-menu-list {
+  padding: 8px 16px;
+  display: flex;
+  flex-direction: column;
+}
+
+.pv-menu-item {
+  display: flex;
+  align-items: center;
+  background: transparent;
+  border: none;
+  padding: 16px 0;
+  color: white;
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.pv-menu-item:last-child {
+  border-bottom: none;
+}
+
+.pv-menu-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 16px;
+}
+
+.pv-menu-item span {
+  flex: 1;
+  text-align: left;
+}
+
+.pv-menu-value {
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 14px;
+  margin-right: 8px;
+}
+
+.pv-chevron {
+  color: rgba(255, 255, 255, 0.3);
+}
+
+/* Logout */
+.pv-logout-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  color: #F44336;
+  font-size: 16px;
+  font-weight: 600;
+  padding: 16px;
+  border: 1px solid rgba(244, 67, 54, 0.2);
+  background: rgba(244, 67, 54, 0.05);
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-top: 8px;
+}
+
+.pv-logout-btn:hover {
+  background: rgba(244, 67, 54, 0.1);
+}
+
+.pv-version {
+  text-align: center;
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 12px;
+  margin: 16px 0 0 0;
+}
