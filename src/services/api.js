@@ -69,7 +69,7 @@ export const mapTransactionToFrontend = (t) => {
   const title = t.description || t.title || 'Transaksi';
   const amountVal = Number(t.amount || 0);
   const type = t.type || 'expense';
-  const category = t.category || 'Lainnya';
+  const category = t.category || (t.wallet && (t.wallet.name || t.wallet.title)) || 'Lainnya';
   
   // Format Date String nicely
   let dateStr = 'Baru saja';
@@ -145,11 +145,36 @@ export const authService = {
   }
 };
 
+// Request deduplication cache for parallel/concurrent GET requests (e.g. React StrictMode)
+const activeRequests = new Map();
+
+const getDeduplicated = (url, config = {}) => {
+  const serializedParams = config.params ? JSON.stringify(config.params) : '';
+  const key = `${url}?${serializedParams}`;
+
+  if (activeRequests.has(key)) {
+    return activeRequests.get(key);
+  }
+
+  const promise = api.get(url, config)
+    .then(response => {
+      activeRequests.delete(key);
+      return response;
+    })
+    .catch(error => {
+      activeRequests.delete(key);
+      throw error;
+    });
+
+  activeRequests.set(key, promise);
+  return promise;
+};
+
 // Wallet/Pockets Service
 export const walletService = {
   getAll: async () => {
     try {
-      const response = await api.get('/wallets');
+      const response = await getDeduplicated('/wallets');
       const list = response.data.data || response.data || [];
       return list.map((w, idx) => mapWalletToFrontend(w, idx));
     } catch (error) {
@@ -207,7 +232,7 @@ export const transactionService = {
       if (walletId) params.wallet_id = walletId;
       if (type) params.type = type;
 
-      const response = await api.get('/transactions', { params });
+      const response = await getDeduplicated('/transactions', { params });
       const list = response.data.data || response.data || [];
       return list.map(t => mapTransactionToFrontend(t));
     } catch (error) {

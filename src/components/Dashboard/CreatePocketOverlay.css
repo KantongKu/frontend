@@ -1,18 +1,19 @@
 .create-pocket-overlay {
-  position: absolute;
+  position: fixed;
   top: 0;
+  bottom: 0;
   left: 50%;
   transform: translateX(-50%);
   width: 100%;
   max-width: 480px;
-  height: 100%;
-  background: rgba(15, 10, 30, 0.5); /* Sleek Glassmorphism */
+  height: 100vh;
+  background: rgba(15, 10, 30, 0.95); /* Sleek Glassmorphism - slightly darker for mobile visibility */
   backdrop-filter: blur(30px);
   -webkit-backdrop-filter: blur(30px);
   border-left: 1px solid rgba(255, 255, 255, 0.05);
   border-right: 1px solid rgba(255, 255, 255, 0.05);
   box-shadow: 0 0 50px rgba(0, 0, 0, 0.5);
-  z-index: 100;
+  z-index: 1100; /* Higher than mobile bottom-nav-container (1000) */
   display: flex;
   flex-direction: column;
   animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);

@@ -98,6 +98,7 @@ const AuthPage = () => {
           const user = { name: name, email: email };
           localStorage.setItem('activeUser', JSON.stringify(user));
           localStorage.setItem(`onboarding_completed_${email}`, 'false');
+          localStorage.setItem('last_activity', Date.now().toString());
           setLoading(false);
           navigate('/onboarding', { replace: true });
         })
@@ -122,6 +123,7 @@ const AuthPage = () => {
 
           const user = { name: finalName, email: email };
           localStorage.setItem('activeUser', JSON.stringify(user));
+          localStorage.setItem('last_activity', Date.now().toString());
           setLoading(false);
           proceedToNextScreen(email);
         })

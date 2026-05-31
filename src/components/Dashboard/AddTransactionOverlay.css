@@ -1,15 +1,16 @@
 .add-transaction-overlay {
-  position: absolute;
+  position: fixed;
   top: 0;
+  bottom: 0;
   left: 50%;
   transform: translateX(-50%);
   width: 100%;
   max-width: 480px;
-  height: 100%;
+  height: 100vh;
   background: rgba(15, 10, 30, 0.95);
   backdrop-filter: blur(30px);
   -webkit-backdrop-filter: blur(30px);
-  z-index: 1000;
+  z-index: 1100; /* Higher than mobile bottom-nav-container (1000) */
   display: flex;
   flex-direction: column;
   animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
