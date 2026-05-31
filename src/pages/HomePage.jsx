@@ -236,6 +236,7 @@ const HomePage = () => {
     } else if (action === 'logout' || action === 'back-to-landing') {
       localStorage.removeItem('token');
       localStorage.removeItem('activeUser');
+      localStorage.removeItem('last_activity');
       navigate('/');
     } else {
       setToastMessage(action);

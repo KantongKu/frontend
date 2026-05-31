@@ -4,6 +4,8 @@ import { ArrowRight, Wallet, LineChart, Cpu, Sparkles } from 'lucide-react';
 import { newsItems } from '../data/newsData';
 import './LandingPage.css';
 
+const baseUrl = import.meta.env.BASE_URL || '/';
+
 const LandingPage = () => {
   const navigate = useNavigate();
   const [scrolled, setScrolled] = useState(false);
@@ -307,7 +309,7 @@ const LandingPage = () => {
             </div>
 
             <div className="about-visual">
-              <img src="/jeans_pocket.png" alt="Jeans Pocket" className="pocket-image" />
+              <img src={`${baseUrl}jeans_pocket.png`} alt="Jeans Pocket" className="pocket-image" />
             </div>
           </div>
         </div>
@@ -322,19 +324,19 @@ const LandingPage = () => {
 
           <div className="team-gallery">
              <div className="team-member-card size-small">
-               <img src="/team_1.png" alt="Team member 1" />
+               <img src={`${baseUrl}team_1.png`} alt="Team member 1" />
              </div>
              <div className="team-member-card size-medium">
-               <img src="/team_2.png" alt="Team member 2" />
+               <img src={`${baseUrl}team_2.png`} alt="Team member 2" />
              </div>
              <div className="team-member-card size-large">
-               <img src="/team_3.png" alt="Team member 3" />
+               <img src={`${baseUrl}team_3.png`} alt="Team member 3" />
              </div>
              <div className="team-member-card size-medium">
-               <img src="/team_4.png" alt="Team member 4" />
+               <img src={`${baseUrl}team_4.png`} alt="Team member 4" />
              </div>
              <div className="team-member-card size-small">
-               <img src="/team_5.png" alt="Team member 5" />
+               <img src={`${baseUrl}team_5.png`} alt="Team member 5" />
              </div>
           </div>
         </div>
