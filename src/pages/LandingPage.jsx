@@ -156,6 +156,23 @@ const LandingPage = () => {
     }
   };
 
+  const handleScrollToSection = (e, id) => {
+    e.preventDefault();
+    const element = document.getElementById(id);
+    if (element) {
+      const offset = 80; // Height of floating navbar
+      const bodyRect = document.body.getBoundingClientRect().top;
+      const elementRect = element.getBoundingClientRect().top;
+      const elementPosition = elementRect - bodyRect;
+      const offsetPosition = elementPosition - offset;
+
+      window.scrollTo({
+        top: offsetPosition,
+        behavior: 'smooth'
+      });
+    }
+  };
+
   return (
     <div className="landing-page">
       {/* Tile Reveal Animation */}
@@ -190,11 +207,47 @@ const LandingPage = () => {
           </Link>
           
           <div className="nav-links" onMouseLeave={handleMouseLeave}>
-            <a href="#home" className="active" ref={el => navRefs.current[0] = el} onMouseEnter={handleMouseEnter}>{currentT.home}</a>
-            <a href="#features" ref={el => navRefs.current[1] = el} onMouseEnter={handleMouseEnter}>{currentT.features}</a>
-            <a href="#about" ref={el => navRefs.current[2] = el} onMouseEnter={handleMouseEnter}>{currentT.about}</a>
-            <a href="#team" ref={el => navRefs.current[3] = el} onMouseEnter={handleMouseEnter}>{currentT.team}</a>
-            <a href="#news" ref={el => navRefs.current[4] = el} onMouseEnter={handleMouseEnter}>{currentT.news}</a>
+            <a 
+              href="#home" 
+              className="active" 
+              ref={el => navRefs.current[0] = el} 
+              onMouseEnter={handleMouseEnter}
+              onClick={(e) => handleScrollToSection(e, 'home')}
+            >
+              {currentT.home}
+            </a>
+            <a 
+              href="#features" 
+              ref={el => navRefs.current[1] = el} 
+              onMouseEnter={handleMouseEnter}
+              onClick={(e) => handleScrollToSection(e, 'features')}
+            >
+              {currentT.features}
+            </a>
+            <a 
+              href="#about" 
+              ref={el => navRefs.current[2] = el} 
+              onMouseEnter={handleMouseEnter}
+              onClick={(e) => handleScrollToSection(e, 'about')}
+            >
+              {currentT.about}
+            </a>
+            <a 
+              href="#team" 
+              ref={el => navRefs.current[3] = el} 
+              onMouseEnter={handleMouseEnter}
+              onClick={(e) => handleScrollToSection(e, 'team')}
+            >
+              {currentT.team}
+            </a>
+            <a 
+              href="#news" 
+              ref={el => navRefs.current[4] = el} 
+              onMouseEnter={handleMouseEnter}
+              onClick={(e) => handleScrollToSection(e, 'news')}
+            >
+              {currentT.news}
+            </a>
             <div className="nav-indicator" style={indicatorStyle}></div>
           </div>
 

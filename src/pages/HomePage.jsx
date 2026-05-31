@@ -49,6 +49,13 @@ const HomePage = () => {
       // Fetch transactions for each individual wallet
       const txPromises = fetchedPockets.map(pocket =>
         transactionService.getAll(pocket.id)
+          .then(txs => {
+            // Map the transaction category to pocket title if it is "Lainnya" or empty
+            return txs.map(tx => ({
+              ...tx,
+              category: (tx.category && tx.category !== 'Lainnya') ? tx.category : pocket.title
+            }));
+          })
           .catch(err => {
             console.error(`Gagal mengambil transaksi untuk dompet ${pocket.id}:`, err);
             return [];
@@ -119,6 +126,7 @@ const HomePage = () => {
             
           return {
             ...pocket,
+            initialBudget, // Store initial budget limit
             balance: currentBalance,
             amount: `Rp ${currentBalance.toLocaleString('id-ID')}`,
             progress
@@ -525,6 +533,8 @@ const HomePage = () => {
 
         {currentView === 'chart' && (
           <AnalyticsView 
+            pockets={pockets}
+            activities={activities}
             onBack={() => setCurrentView('dashboard')}
           />
         )}
