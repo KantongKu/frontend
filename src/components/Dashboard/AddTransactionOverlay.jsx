@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, ArrowDownCircle, ArrowUpCircle, Wallet, Calendar } from 'lucide-react';
+import { X, ArrowDownCircle, ArrowUpCircle, Wallet, Calendar, Upload, Image as ImageIcon } from 'lucide-react';
 import './AddTransactionOverlay.css';
 
 const AddTransactionOverlay = ({ type = 'expense', pockets, onClose, onSubmit }) => {
@@ -8,6 +8,27 @@ const AddTransactionOverlay = ({ type = 'expense', pockets, onClose, onSubmit })
   const [description, setDescription] = useState('');
   const [selectedPocketId, setSelectedPocketId] = useState(pockets.length > 0 ? pockets[0].id : '');
   const [transactionDate, setTransactionDate] = useState(new Date().toISOString().split('T')[0]);
+  const [receiptImage, setReceiptImage] = useState(null);
+  const [receiptPreview, setReceiptPreview] = useState(null);
+
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setReceiptImage(file);
+      
+      // Create preview
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setReceiptPreview(reader.result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleRemoveImage = () => {
+    setReceiptImage(null);
+    setReceiptPreview(null);
+  };
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -21,7 +42,8 @@ const AddTransactionOverlay = ({ type = 'expense', pockets, onClose, onSubmit })
       amount: numAmount,
       description,
       pocketId: selectedPocketId,
-      transactionDate
+      transactionDate,
+      receiptImage
     });
   };
 
@@ -114,6 +136,36 @@ const AddTransactionOverlay = ({ type = 'expense', pockets, onClose, onSubmit })
               onChange={(e) => setDescription(e.target.value)}
               className="ato-input"
             />
+          </div>
+
+          <div className="ato-form-group">
+            <label>Bukti Transaksi / Kwitansi (Opsional)</label>
+            {!receiptPreview ? (
+              <label className="ato-upload-area">
+                <input 
+                  type="file" 
+                  accept="image/*"
+                  onChange={handleImageChange}
+                  style={{ display: 'none' }}
+                />
+                <div className="upload-placeholder">
+                  <Upload size={24} />
+                  <span>Pilih foto bukti transaksi</span>
+                  <small>atau drag & drop di sini</small>
+                </div>
+              </label>
+            ) : (
+              <div className="receipt-preview">
+                <img src={receiptPreview} alt="Receipt preview" className="preview-image" />
+                <button 
+                  type="button" 
+                  className="remove-btn"
+                  onClick={handleRemoveImage}
+                >
+                  Hapus Gambar
+                </button>
+              </div>
+            )}
           </div>
 
           <button type="submit" className={`ato-submit-btn ${isIncome ? 'btn-income' : 'btn-expense'}`}>

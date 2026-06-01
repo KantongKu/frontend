@@ -1,40 +1,87 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import { walletService, transactionService } from '../services/api';
 
 const ExpenseContext = createContext();
 
 export const ExpenseProvider = ({ children }) => {
-  const [expenses, setExpenses] = useState([
-    {
-      id: 1,
-      date: new Date('2026-05-01'),
-      description: 'Makan Sate Padang',
-      amount: 35000,
-      category: 'Makanan & Minuman',
-      status: 'categorized',
-      receipt: null
-    },
-    {
-      id: 2,
-      date: new Date('2026-05-02'),
-      description: 'Bensin',
-      amount: 75000,
-      category: 'Transportasi',
-      status: 'categorized',
-      receipt: null
-    },
-  ]);
-
-  const [budgets, setBudgets] = useState({
-    'Makanan & Minuman': { limit: 500000, spent: 35000 },
-    'Transportasi': { limit: 300000, spent: 75000 },
-    'Hiburan': { limit: 200000, spent: 0 },
-    'Utilitas': { limit: 500000, spent: 0 },
-    'Kesehatan': { limit: 300000, spent: 0 },
-    'Pendidikan': { limit: 400000, spent: 0 },
-    'Lainnya': { limit: 200000, spent: 0 },
-  });
-
+  const [expenses, setExpenses] = useState([]);
+  const [budgets, setBudgets] = useState({});
   const [monthlyIncome, setMonthlyIncome] = useState(5000000);
+  const [wallets, setWallets] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  // Load data from API on mount
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        setLoading(true);
+        // Fetch wallets
+        const fetchedWallets = await walletService.getAll();
+        setWallets(fetchedWallets);
+
+        // Fetch all transactions
+        const allTransactions = await transactionService.getAll();
+        
+        // Convert transactions to expense format for backward compatibility
+        const expensesList = allTransactions.map(tx => ({
+          id: tx.id,
+          date: new Date(tx.dateRaw || new Date()),
+          description: tx.title,
+          amount: tx.amountVal,
+          category: tx.category,
+          status: 'categorized',
+          receipt: null,
+          wallet_id: tx.wallet_id,
+          type: tx.type
+        }));
+        
+        setExpenses(expensesList);
+
+        // Build budgets from wallets
+        const budgetsMap = {};
+        fetchedWallets.forEach(wallet => {
+          if (wallet.budget_limit) {
+            budgetsMap[wallet.title] = {
+              limit: wallet.budget_limit,
+              spent: wallet.budget_limit - wallet.balance
+            };
+          }
+        });
+        
+        if (Object.keys(budgetsMap).length === 0) {
+          // Fallback default categories if no wallets found
+          setBudgets({
+            'Makanan & Minuman': { limit: 500000, spent: 0 },
+            'Transportasi': { limit: 300000, spent: 0 },
+            'Hiburan': { limit: 200000, spent: 0 },
+            'Utilitas': { limit: 500000, spent: 0 },
+            'Kesehatan': { limit: 300000, spent: 0 },
+            'Pendidikan': { limit: 400000, spent: 0 },
+            'Lainnya': { limit: 200000, spent: 0 },
+          });
+        } else {
+          setBudgets(budgetsMap);
+        }
+      } catch (error) {
+        console.error('Error loading data from API:', error);
+        // Fallback to empty state if API fails
+        setExpenses([]);
+        setBudgets({
+          'Makanan & Minuman': { limit: 500000, spent: 0 },
+          'Transportasi': { limit: 300000, spent: 0 },
+          'Hiburan': { limit: 200000, spent: 0 },
+          'Utilitas': { limit: 500000, spent: 0 },
+          'Kesehatan': { limit: 300000, spent: 0 },
+          'Pendidikan': { limit: 400000, spent: 0 },
+          'Lainnya': { limit: 200000, spent: 0 },
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadData();
+  }, []);
 
   const addExpense = useCallback((expense) => {
     const newExpense = {
@@ -44,6 +91,18 @@ export const ExpenseProvider = ({ children }) => {
       status: 'pending'
     };
     setExpenses(prev => [newExpense, ...prev]);
+    
+    // Also create transaction via API if wallet_id is provided
+    if (expense.wallet_id) {
+      transactionService.create({
+        wallet_id: expense.wallet_id,
+        amount: expense.amount,
+        type: expense.type || 'expense',
+        description: expense.description || expense.title || 'Transaksi',
+        transaction_date: new Date().toISOString().split('T')[0]
+      }).catch(error => console.error('Error creating transaction:', error));
+    }
+    
     return newExpense;
   }, [expenses]);
 
@@ -112,6 +171,8 @@ export const ExpenseProvider = ({ children }) => {
     getTotalExpenses,
     getExpensesByCategory,
     getRemainingBudget,
+    wallets,
+    loading
   };
 
   return (

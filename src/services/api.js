@@ -21,6 +21,21 @@ api.interceptors.request.use((config) => {
   return Promise.reject(error);
 });
 
+// Auto-detect Token Expiration / Unauthorized Response Interceptor
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response && error.response.status === 401) {
+      console.warn('Sesi kedaluwarsa atau tidak sah (401). Mengalihkan ke login...');
+      localStorage.removeItem('token');
+      localStorage.removeItem('activeUser');
+      localStorage.removeItem('last_activity');
+      window.location.hash = '/login';
+    }
+    return Promise.reject(error);
+  }
+);
+
 // Lucide Icon Bindings Map
 const iconMap = {
   Wallet,
@@ -41,14 +56,24 @@ const pocketColors = ['pocket-blue', 'pocket-yellow', 'pocket-green', 'pocket-or
 export const mapWalletToFrontend = (w, index = 0) => {
   const id = w.wallet_id || w.id || w._id;
   const title = w.name || w.title || 'Kantong';
-  const balance = w.balance !== undefined ? Number(w.balance) : (w.amount !== undefined ? Number(w.amount) : (w.budget_limit !== undefined ? Number(w.budget_limit) : 0));
+  // Priority: current_balance > balance > budget_limit > amount
+  const balance = w.current_balance !== undefined ? Number(w.current_balance) : 
+                  (w.balance !== undefined ? Number(w.balance) : 
+                  (w.budget_limit !== undefined ? Number(w.budget_limit) : 
+                  (w.amount !== undefined ? Number(w.amount) : 0)));
   const iconName = w.icon || w.iconName || 'Wallet';
   
   // Dynamic color selection based on index if color not provided
   const colorClass = w.color || w.colorClass || pocketColors[index % pocketColors.length];
   
-  // Calculate progress dummy/mock or based on database limits
-  const progress = w.progress !== undefined ? Number(w.progress) : 0;
+  // Calculate progress: (spent / budget_limit) * 100
+  let progress = 0;
+  if (w.budget_limit && w.current_balance !== undefined) {
+    const spent = Number(w.budget_limit) - Number(w.current_balance);
+    progress = Math.min(Math.round((spent / Number(w.budget_limit)) * 100), 100);
+  } else if (w.progress !== undefined) {
+    progress = Number(w.progress);
+  }
 
   return {
     id,
@@ -59,7 +84,8 @@ export const mapWalletToFrontend = (w, index = 0) => {
     colorClass,
     iconName,
     Icon: iconMap[iconName] || Wallet,
-    createdAt: w.created_at || w.createdAt || null
+    createdAt: w.created_at || w.createdAt || null,
+    budget_limit: w.budget_limit ? Number(w.budget_limit) : undefined
   };
 };
 
@@ -111,7 +137,8 @@ export const mapTransactionToFrontend = (t) => {
     type,
     Icon,
     iconClass,
-    dateRaw: t.date || t.createdAt || new Date().toISOString()
+    dateRaw: t.date || t.createdAt || new Date().toISOString(),
+    image_url: t.image_url || t.imageUrl || t.bukti || t.image || null
   };
 };
 
@@ -141,6 +168,74 @@ export const authService = {
     } catch (error) {
       console.error('Error during login:', error);
       throw error;
+    }
+  }
+};
+
+// User Service
+export const userService = {
+  getProfile: async () => {
+    try {
+      // Try to fetch from API first - use /auth/profile endpoint
+      const response = await getDeduplicated('/auth/profile');
+      const profileData = response.data.data || response.data;
+      // Save to localStorage for persistence
+      localStorage.setItem('activeUser', JSON.stringify(profileData));
+      return profileData;
+    } catch (error) {
+      console.error('Error fetching profile from API:', error);
+      // Fallback to localStorage if API endpoint not available
+      const activeUserJson = localStorage.getItem('activeUser');
+      if (activeUserJson) {
+        return JSON.parse(activeUserJson);
+      }
+      throw new Error('Profile tidak tersedia');
+    }
+  },
+
+  updateProfile: async (updateData) => {
+    try {
+      // Prepare request data - use FormData if avatar file exists
+      let requestData = updateData;
+      let config = undefined;
+
+      if (updateData.avatar) {
+        // Create FormData for file upload
+        const formData = new FormData();
+        formData.append('full_name', updateData.full_name || '');
+        if (updateData.avatar) {
+          formData.append('avatar', updateData.avatar);
+        }
+        requestData = formData;
+        config = {
+          headers: {
+            'Content-Type': 'multipart/form-data'
+          }
+        };
+      }
+
+      // Try to update via API first - use /auth/profile endpoint
+      const response = await api.put('/auth/profile', requestData, config);
+      const profileData = response.data.data || response.data;
+      // Update localStorage
+      localStorage.setItem('activeUser', JSON.stringify(profileData));
+      return profileData;
+    } catch (error) {
+      console.error('Error updating profile via API:', error);
+      // Fallback: Update only in localStorage if API endpoint not available
+      const activeUserJson = localStorage.getItem('activeUser');
+      if (activeUserJson) {
+        const activeUser = JSON.parse(activeUserJson);
+        const updatedUser = {
+          ...activeUser,
+          full_name: updateData.full_name || activeUser.full_name,
+          email: updateData.email || activeUser.email
+          // Note: avatar file can't be stored in localStorage, only URL from API response
+        };
+        localStorage.setItem('activeUser', JSON.stringify(updatedUser));
+        return updatedUser;
+      }
+      throw new Error('Gagal memperbarui profil');
     }
   }
 };
@@ -175,7 +270,15 @@ export const walletService = {
   getAll: async () => {
     try {
       const response = await getDeduplicated('/wallets');
-      const list = response.data.data || response.data || [];
+      // Handle different response formats from backend
+      let list = response.data.data || response.data.wallets || response.data || [];
+      
+      // Ensure list is always an array
+      if (!Array.isArray(list)) {
+        console.warn('Wallet API response is not an array:', list);
+        list = [];
+      }
+      
       return list.map((w, idx) => mapWalletToFrontend(w, idx));
     } catch (error) {
       console.error('Error fetching wallets:', error);
@@ -233,7 +336,14 @@ export const transactionService = {
       if (type) params.type = type;
 
       const response = await getDeduplicated('/transactions', { params });
-      const list = response.data.data || response.data || [];
+      let list = response.data.data || response.data || [];
+      
+      // Ensure list is always an array
+      if (!Array.isArray(list)) {
+        console.warn('Transaction API response is not an array:', list);
+        list = [];
+      }
+      
       return list.map(t => mapTransactionToFrontend(t));
     } catch (error) {
       console.error('Error fetching transactions:', error);
@@ -243,19 +353,41 @@ export const transactionService = {
 
   create: async (txData) => {
     try {
-      // payload: { wallet_id, amount, type, description, transaction_date, image_url, is_ocr }
+      // payload: { wallet_id, amount, type, description, transaction_date, image_url, is_ocr, receiptImage }
       const todayStr = new Date().toISOString().split('T')[0];
-      const response = await api.post('/transactions', {
-        wallet_id: Number(txData.wallet_id || txData.walletId),
-        amount: Number(txData.amount),
-        type: txData.type || 'expense',
-        description: txData.description || txData.title || 'Transaksi',
-        transaction_date: txData.transaction_date || todayStr,
-        image_url: txData.image_url || null,
-        is_ocr: txData.is_ocr !== undefined ? !!txData.is_ocr : false
-      });
-      const resData = response.data.data || response.data;
-      return mapTransactionToFrontend(resData);
+      
+      // If receipt image is provided, use FormData for multipart upload
+      if (txData.receiptImage) {
+        const formData = new FormData();
+        formData.append('wallet_id', Number(txData.wallet_id || txData.walletId));
+        formData.append('amount', Number(txData.amount));
+        formData.append('type', txData.type || 'expense');
+        formData.append('description', txData.description || txData.title || 'Transaksi');
+        formData.append('transaction_date', txData.transaction_date || todayStr);
+        formData.append('is_ocr', txData.is_ocr !== undefined ? !!txData.is_ocr : false);
+        formData.append('image', txData.receiptImage);
+        
+        const response = await api.post('/transactions', formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data'
+          }
+        });
+        const resData = response.data.data || response.data;
+        return mapTransactionToFrontend(resData);
+      } else {
+        // Standard JSON request without image
+        const response = await api.post('/transactions', {
+          wallet_id: Number(txData.wallet_id || txData.walletId),
+          amount: Number(txData.amount),
+          type: txData.type || 'expense',
+          description: txData.description || txData.title || 'Transaksi',
+          transaction_date: txData.transaction_date || todayStr,
+          image_url: txData.image_url || null,
+          is_ocr: txData.is_ocr !== undefined ? !!txData.is_ocr : false
+        });
+        const resData = response.data.data || response.data;
+        return mapTransactionToFrontend(resData);
+      }
     } catch (error) {
       console.error('Error creating transaction:', error);
       throw error;
@@ -317,13 +449,23 @@ export const scannerService = {
     formData.append('image', imageFile);
     
     try {
+      console.log('Calling OCR API with file:', imageFile.name || imageFile.size, 'bytes');
       const response = await api.post('/scanner/extract', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
+      
+      console.log('OCR API raw response:', response);
+      
+      // Validate response status
+      if (!response || !response.data) {
+        throw new Error('Response kosong dari server');
+      }
+      
       return response.data;
     } catch (error) {
       console.error('Error extracting data:', error);
-      throw error;
+      console.error('Error details:', error.response?.data || error.message);
+      throw new Error(error.response?.data?.message || error.message || 'Gagal menghubungi server OCR');
     }
   },
 };
