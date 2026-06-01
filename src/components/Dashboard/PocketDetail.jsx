@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ChevronLeft, MoreVertical, Plus, Utensils, ShoppingCart, ArrowDownCircle, ArrowUpCircle, Banknote } from 'lucide-react';
+import { ChevronLeft, MoreVertical, Plus, Utensils, ShoppingCart, ArrowDownCircle, ArrowUpCircle, Banknote, X, Image as ImageIcon } from 'lucide-react';
 import AddTransactionOverlay from './AddTransactionOverlay';
 import { transactionService } from '../../services/api';
 import './PocketDetail.css';
@@ -7,6 +7,7 @@ import './PocketDetail.css';
 const PocketDetail = ({ pocket, onBack, onRefresh }) => {
   const [transactions, setTransactions] = useState([]);
   const [showAddOverlay, setShowAddOverlay] = useState(false);
+  const [selectedReceiptUrl, setSelectedReceiptUrl] = useState(null);
 
   useEffect(() => {
     if (pocket && pocket.id) {
@@ -54,8 +55,8 @@ const PocketDetail = ({ pocket, onBack, onRefresh }) => {
       amount: Number(newTx.amount),
       type: newTx.type || 'expense',
       description: newTx.description,
-      category: newTx.type === 'income' ? 'Income' : 'Lainnya',
-      transaction_date: newTx.transactionDate
+      transaction_date: newTx.transactionDate,
+      receiptImage: newTx.receiptImage || null
     })
     .then(() => {
       // Reload transactions
@@ -118,24 +119,48 @@ const PocketDetail = ({ pocket, onBack, onRefresh }) => {
           <h3>Riwayat Transaksi</h3>
           <div className="activity-list">
             {transactions.map(activity => (
-              <div key={activity.id} className="activity-item">
-                <div className={`activity-icon ${activity.iconClass}`}>
-                  <activity.Icon size={20} />
+              <div key={activity.id} className="activity-item-wrapper">
+                <div className="activity-item">
+                  <div className={`activity-icon ${activity.iconClass}`}>
+                    <activity.Icon size={20} />
+                  </div>
+                  <div className="activity-details">
+                    <h4>{activity.title}</h4>
+                    <p>{activity.date}</p>
+                  </div>
+                  <div className="activity-amount-box">
+                    <h4 className={activity.type === 'expense' ? 'text-red' : 'text-green'}>
+                      {activity.amount}
+                    </h4>
+                  </div>
                 </div>
-                <div className="activity-details">
-                  <h4>{activity.title}</h4>
-                  <p>{activity.date}</p>
-                </div>
-                <div className="activity-amount-box">
-                  <h4 className={activity.type === 'expense' ? 'text-red' : 'text-green'}>
-                    {activity.amount}
-                  </h4>
-                </div>
+                {/* Receipt Image Indicator */}
+                {activity.image_url && (
+                  <button 
+                    className="receipt-indicator"
+                    onClick={() => setSelectedReceiptUrl(activity.image_url)}
+                    title="Lihat bukti transaksi"
+                  >
+                    <ImageIcon size={16} />
+                  </button>
+                )}
               </div>
             ))}
           </div>
         </div>
       </div>
+
+      {/* Receipt Image Modal */}
+      {selectedReceiptUrl && (
+        <div className="receipt-modal-overlay" onClick={() => setSelectedReceiptUrl(null)}>
+          <div className="receipt-modal-content" onClick={(e) => e.stopPropagation()}>
+            <button className="receipt-modal-close" onClick={() => setSelectedReceiptUrl(null)}>
+              <X size={24} />
+            </button>
+            <img src={selectedReceiptUrl} alt="Bukti transaksi" className="receipt-modal-image" />
+          </div>
+        </div>
+      )}
 
       {showAddOverlay && (
         <AddTransactionOverlay

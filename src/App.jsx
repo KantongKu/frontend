@@ -5,7 +5,6 @@ import Header from './components/Layout/Header';
 import LandingPage from './pages/LandingPage';
 import AuthPage from './pages/AuthPage';
 import HomePage from './pages/HomePage';
-import ScannerPage from './pages/ScannerPage';
 import CategorizationPage from './pages/CategorizationPage';
 import NewsDetailPage from './pages/NewsDetailPage';
 import OnboardingPage from './pages/OnboardingPage';
@@ -99,7 +98,6 @@ function AppContent() {
           <Route path="/register" element={<AuthPage />} />
           <Route path="/onboarding" element={<OnboardingPage />} />
           <Route path="/dashboard" element={<HomePage />} />
-          <Route path="/scanner" element={<ScannerPage />} />
           <Route path="/categorization" element={<CategorizationPage />} />
           <Route path="/news/:id" element={<NewsDetailPage />} />
         </Routes>

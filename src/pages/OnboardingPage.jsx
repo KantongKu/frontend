@@ -12,6 +12,7 @@ const OnboardingPage = () => {
     pocketName: 'Kantong Utama',
     initialBalance: ''
   });
+  const [isLoading, setIsLoading] = useState(true);
 
   // Load registered name on mount and protect route
   React.useEffect(() => {
@@ -42,20 +43,36 @@ const OnboardingPage = () => {
               if (activeUser.name) {
                 setFormData(prev => ({ ...prev, name: activeUser.name }));
               }
+              setIsLoading(false);
             }
           })
           .catch(() => {
             if (activeUser.name) {
               setFormData(prev => ({ ...prev, name: activeUser.name }));
             }
+            setIsLoading(false);
           });
       } else {
         if (activeUser.name) {
           setFormData(prev => ({ ...prev, name: activeUser.name }));
         }
+        setIsLoading(false);
       }
+    } else {
+      setIsLoading(false);
     }
   }, [navigate]);
+
+  if (isLoading) {
+    return (
+      <div className="dashboard-loading-overlay">
+        <div className="loading-spinner-container">
+          <div className="loading-spinner-circle"></div>
+          <p className="loading-spinner-text">Memeriksa status onboarding...</p>
+        </div>
+      </div>
+    );
+  }
 
   const handleChange = (e) => {
     const { name, value } = e.target;

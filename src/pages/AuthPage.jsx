@@ -25,14 +25,28 @@ const AuthPage = () => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
+  const [checkingAuth, setCheckingAuth] = useState(() => !!localStorage.getItem('token'));
 
   // If already logged in, redirect user directly to dashboard
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (token) {
       navigate('/dashboard', { replace: true });
+    } else {
+      setCheckingAuth(false);
     }
   }, [navigate]);
+
+  if (checkingAuth) {
+    return (
+      <div className="dashboard-loading-overlay">
+        <div className="loading-spinner-container">
+          <div className="loading-spinner-circle"></div>
+          <p className="loading-spinner-text">Menghubungkan ke akun Anda...</p>
+        </div>
+      </div>
+    );
+  }
 
   // Sync state if URL changes
   useEffect(() => {

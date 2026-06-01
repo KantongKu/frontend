@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Bell, Plus, Send, ShoppingBag, Plane, PiggyBank, Utensils, Banknote, ShoppingCart, Home, Wallet, BarChart2, User, Heart, LogOut, Edit, Upload, Keyboard, Receipt, RefreshCw, Camera, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Bell, Plus, Send, ShoppingBag, Plane, PiggyBank, Utensils, Banknote, ShoppingCart, Home, Wallet, BarChart2, User, Heart, LogOut, Edit, Upload, Camera, ChevronLeft, ChevronRight } from 'lucide-react';
 import './HomePage.css';
 import './LandingPage.css'; // For background styles
 import MobileScannerOverlay from '../components/Scanner/MobileScannerOverlay';
@@ -11,6 +11,7 @@ import ProfileView from '../components/Dashboard/ProfileView';
 import EditProfileView from '../components/Dashboard/EditProfileView';
 import OcrArchiveView from '../components/Dashboard/OcrArchiveView';
 import NotificationView from '../components/Dashboard/NotificationView';
+import TransactionGalleryView from '../components/Dashboard/TransactionGalleryView';
 import AddTransactionOverlay from '../components/Dashboard/AddTransactionOverlay';
 import ExpenseCategorization from '../components/Categorization/ExpenseCategorization';
 import { useNavigate } from 'react-router-dom';
@@ -42,10 +43,33 @@ const HomePage = () => {
   const [toastMessage, setToastMessage] = useState(null);
   const [currentNewsIndex, setCurrentNewsIndex] = useState(0);
   const [userName, setUserName] = useState('Budi Santoso');
+  const [isLoading, setIsLoading] = useState(true);
+  const [profileRefreshTrigger, setProfileRefreshTrigger] = useState(0);
+  const [profileAvatar, setProfileAvatar] = useState('https://i.pravatar.cc/150?img=11');
 
   const fetchDashboardData = useCallback(() => {
+    const activeUserJson = localStorage.getItem('activeUser');
+    let email = '';
+    if (activeUserJson) {
+      try {
+        const activeUser = JSON.parse(activeUserJson);
+        email = activeUser.email || '';
+      } catch (e) {
+        console.error("Gagal memproses data activeUser:", e);
+      }
+    }
+
     walletService.getAll()
     .then((fetchedPockets) => {
+      if (fetchedPockets.length === 0) {
+        console.warn("Kantong kosong ditemukan, mengalihkan ke onboarding...");
+        if (email) {
+          localStorage.removeItem(`onboarding_completed_${email}`);
+        }
+        navigate('/onboarding', { replace: true });
+        return;
+      }
+
       // Fetch transactions for each individual wallet
       const txPromises = fetchedPockets.map(pocket =>
         transactionService.getAll(pocket.id)
@@ -135,6 +159,7 @@ const HomePage = () => {
 
         setPockets(updatedPockets);
         setActivities(fetchedTx);
+        setIsLoading(false);
 
         // Update selectedPocket state if active to trigger real-time updates inside PocketDetail
         setSelectedPocket(prev => {
@@ -146,8 +171,9 @@ const HomePage = () => {
     })
     .catch(err => {
       console.error("Gagal mengambil data dashboard:", err);
+      setIsLoading(false);
     });
-  }, []);
+  }, [navigate]);
 
   // Load dynamic session and onboarding pocket on mount
   useEffect(() => {
@@ -160,10 +186,20 @@ const HomePage = () => {
     const activeUserJson = localStorage.getItem('activeUser');
     let email = '';
     if (activeUserJson) {
-      const activeUser = JSON.parse(activeUserJson);
-      email = activeUser.email;
-      if (activeUser.name) {
-        setUserName(activeUser.name);
+      try {
+        const activeUser = JSON.parse(activeUserJson);
+        email = activeUser.email;
+        if (activeUser.name) {
+          setUserName(activeUser.name);
+        }
+        if (activeUser.full_name) {
+          setUserName(activeUser.full_name);
+        }
+        if (activeUser.avatar_url) {
+          setProfileAvatar(activeUser.avatar_url);
+        }
+      } catch (e) {
+        console.error("Gagal memproses data activeUser pada mount:", e);
       }
     }
 
@@ -200,6 +236,26 @@ const HomePage = () => {
     return () => clearInterval(timer);
   }, [newsItems.length]);
 
+  // Update profile avatar when profile is refreshed
+  useEffect(() => {
+    const activeUserJson = localStorage.getItem('activeUser');
+    if (activeUserJson) {
+      try {
+        const activeUser = JSON.parse(activeUserJson);
+        if (activeUser.avatar_url) {
+          setProfileAvatar(activeUser.avatar_url);
+        }
+        if (activeUser.full_name) {
+          setUserName(activeUser.full_name);
+        } else if (activeUser.name) {
+          setUserName(activeUser.name);
+        }
+      } catch (e) {
+        console.error("Error updating profile avatar:", e);
+      }
+    }
+  }, [profileRefreshTrigger]);
+
   const totalBalance = pockets.reduce((acc, pocket) => {
     return acc + (pocket.balance || 0);
   }, 0);
@@ -213,12 +269,18 @@ const HomePage = () => {
     .filter(tx => tx.type === 'expense')
     .reduce((sum, tx) => sum + (tx.amountVal || 0), 0);
 
-  const healthScore = totalIncome > 0
-    ? Math.max(0, Math.min(100, Math.round(((totalIncome - totalExpense) / totalIncome) * 100)))
-    : 75; // Fallback to 75% if no income yet
+  // Health score is the percentage of total funds (starting balance + income) that is NOT spent.
+  // If there are no funds and no expenses, it's a clean 100% slate.
+  // If they spent money but have 0 recorded income/funds, health is 0%.
+  let healthScore = 100;
+  if (totalIncome > 0) {
+    healthScore = Math.max(0, Math.min(100, Math.round(((totalIncome - totalExpense) / totalIncome) * 100)));
+  } else if (totalExpense > 0) {
+    healthScore = 0;
+  }
 
   let healthMessage = "Keuangan Anda seimbang. Mulai mencatat pengeluaran Anda!";
-  if (totalIncome > 0) {
+  if (totalIncome > 0 || totalExpense > 0) {
     if (healthScore >= 90) {
       healthMessage = "Luar biasa! Pengeluaran Anda sangat minim dibanding pemasukan.";
     } else if (healthScore >= 75) {
@@ -232,6 +294,12 @@ const HomePage = () => {
     }
   }
 
+  const getHealthColor = (score) => {
+    if (score >= 75) return '#10B981'; // Green
+    if (score >= 50) return '#F59E0B'; // Orange/Yellow
+    return '#EF4444'; // Red
+  };
+
   const handleProfileAction = (action) => {
     if (action === 'ai-budgeting') {
       setShowCreatePocket(true);
@@ -239,6 +307,8 @@ const HomePage = () => {
       setCurrentView('nlp-categorization');
     } else if (action === 'ocr-archive') {
       setCurrentView('ocr-archive');
+    } else if (action === 'transaction-gallery') {
+      setCurrentView('transaction-gallery');
     } else if (action === 'edit-profile') {
       setCurrentView('edit-profile');
     } else if (action === 'logout' || action === 'back-to-landing') {
@@ -255,9 +325,7 @@ const HomePage = () => {
   const handleAddDummyPocket = (newPocketData) => {
     walletService.create({
       name: newPocketData.title,
-      balance: Number(newPocketData.amount || 0),
-      icon: newPocketData.iconName || 'PiggyBank',
-      color: newPocketData.colorClass || 'pocket-green'
+      budget_limit: Number(newPocketData.amount || 0)
     })
     .then((createdWallet) => {
       const initialBal = Number(newPocketData.amount || 0);
@@ -267,7 +335,7 @@ const HomePage = () => {
           amount: initialBal,
           type: 'income',
           description: `Saldo Awal ${createdWallet.title}`,
-          category: 'Pemasukan'
+          transaction_date: new Date().toISOString().split('T')[0]
         });
       }
     })
@@ -283,14 +351,15 @@ const HomePage = () => {
   };
 
   const handleAddTransaction = (data) => {
-    // data = { type, amount, description, pocketId, transactionDate }
+    // data = { type, amount, description, pocketId, transactionDate, receiptImage }
     transactionService.create({
       wallet_id: data.pocketId,
       amount: Number(data.amount),
       type: data.type || 'expense',
       description: data.description,
-      category: data.type === 'income' ? 'Income' : 'Lainnya',
-      transaction_date: data.transactionDate
+      transaction_date: data.transactionDate || new Date().toISOString().split('T')[0],
+      is_ocr: false,
+      receiptImage: data.receiptImage || null
     })
     .then(() => {
       fetchDashboardData();
@@ -306,6 +375,15 @@ const HomePage = () => {
 
   return (
     <div className="mobile-dashboard landing-page">
+      {isLoading && (
+        <div className="dashboard-loading-overlay">
+          <div className="loading-spinner-container">
+            <div className="loading-spinner-circle"></div>
+            <p className="loading-spinner-text">Memuat data keuangan...</p>
+          </div>
+        </div>
+      )}
+
       {/* Background from Landing Page */}
       <div className="fixed-background">
         <div className="bg-glow bg-glow-tl"></div>
@@ -345,6 +423,11 @@ const HomePage = () => {
             <User size={22} />
             <span>Profile</span>
           </button>
+          
+          <button className="sidebar-item sidebar-logout-btn" onClick={() => handleProfileAction('logout')} style={{ marginTop: 'auto' }}>
+            <LogOut size={22} />
+            <span>Logout</span>
+          </button>
         </nav>
       </aside>
 
@@ -354,7 +437,7 @@ const HomePage = () => {
             {/* Header */}
             <header className="dash-header">
               <div className="dash-user">
-                <img src="https://i.pravatar.cc/150?img=11" alt="Profile" className="profile-pic" />
+                <img src={profileAvatar} alt="Profile" className="profile-pic" />
                 <div>
                   <span style={{ fontSize: '12px', color: 'rgba(255, 255, 255, 0.6)', display: 'block', textTransform: 'uppercase', letterSpacing: '1px' }}>Halo, {userName.split(' ')[0]}</span>
                   <h2 style={{ margin: 0, fontSize: '18px', fontWeight: '700' }}>Balance</h2>
@@ -439,12 +522,13 @@ const HomePage = () => {
                           a 15.9155 15.9155 0 0 1 0 -31.831"
                       />
                       <path className="circle"
+                        stroke={getHealthColor(healthScore)}
                         strokeDasharray={`${healthScore}, 100`}
                         d="M18 2.0845
                           a 15.9155 15.9155 0 0 1 0 31.831
                           a 15.9155 15.9155 0 0 1 0 -31.831"
                       />
-                      <text x="18" y="21.35" className="percentage">{healthScore}%</text>
+                      <text x="18" y="21.35" className="percentage" fill={getHealthColor(healthScore)}>{healthScore}%</text>
                     </svg>
                   </div>
                 </div>
@@ -549,6 +633,7 @@ const HomePage = () => {
           <ProfileView 
             onBack={() => setCurrentView('dashboard')}
             onAction={handleProfileAction}
+            refreshTrigger={profileRefreshTrigger}
           />
         )}
 
@@ -569,6 +654,7 @@ const HomePage = () => {
             onBack={() => setCurrentView('profile')}
             onSave={(msg) => {
               setCurrentView('profile');
+              setProfileRefreshTrigger(prev => prev + 1);
               setToastMessage(msg);
               setTimeout(() => setToastMessage(null), 3000);
             }}
@@ -577,6 +663,12 @@ const HomePage = () => {
 
         {currentView === 'ocr-archive' && (
           <OcrArchiveView 
+            onBack={() => setCurrentView('profile')}
+          />
+        )}
+
+        {currentView === 'transaction-gallery' && (
+          <TransactionGalleryView 
             onBack={() => setCurrentView('profile')}
           />
         )}
@@ -615,18 +707,6 @@ const HomePage = () => {
                     <button className="fab-menu-item" onClick={() => { setShowFabMenu(false); setShowScanner(true); }}>
                       <Upload size={18} />
                       <span>Unggah</span>
-                    </button>
-                    <button className="fab-menu-item" onClick={() => { setShowFabMenu(false); alert('Fitur Input teks segera hadir!'); }}>
-                      <Keyboard size={18} />
-                      <span>Input teks</span>
-                    </button>
-                    <button className="fab-menu-item" onClick={() => { setShowFabMenu(false); alert('Fitur Bagi Tagihan segera hadir!'); }}>
-                      <Receipt size={18} />
-                      <span>Bagi Tagihan</span>
-                    </button>
-                    <button className="fab-menu-item" onClick={() => { setShowFabMenu(false); setShowAddTransaction('expense'); }}>
-                      <RefreshCw size={18} />
-                      <span>Transfer</span>
                     </button>
                   </div>
                 </>

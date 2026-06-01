@@ -282,3 +282,47 @@ textarea:focus {
 .toast.warning {
   border-left: 4px solid var(--warning-color);
 }
+
+/* Global Glassmorphic Loading Overlay */
+.dashboard-loading-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(15, 10, 30, 0.45);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 99999;
+}
+
+.loading-spinner-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  text-align: center;
+  z-index: 10;
+}
+
+.loading-spinner-circle {
+  width: 50px;
+  height: 50px;
+  border: 4px solid rgba(255, 255, 255, 0.1);
+  border-top-color: #7c3aed; /* purple theme accent */
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+.loading-spinner-text {
+  font-size: 15px;
+  color: rgba(255, 255, 255, 0.7);
+  margin: 0;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+}

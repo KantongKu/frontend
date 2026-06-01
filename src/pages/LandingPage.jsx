@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ArrowRight, Wallet, LineChart, Cpu, Sparkles } from 'lucide-react';
+import { ArrowRight, Wallet, LineChart, Cpu, Sparkles, Menu, X } from 'lucide-react';
 import { newsItems } from '../data/newsData';
 import './LandingPage.css';
 
@@ -9,14 +9,21 @@ const baseUrl = import.meta.env.BASE_URL || '/';
 const LandingPage = () => {
   const navigate = useNavigate();
   const [scrolled, setScrolled] = useState(false);
+  const [activeSection, setActiveSection] = useState('home');
   const [indicatorStyle, setIndicatorStyle] = useState({ left: 0, width: 0 });
   const [currentNewsIndex, setCurrentNewsIndex] = useState(0);
   const [pageLoaded, setPageLoaded] = useState(false);
   const [lang, setLang] = useState('id'); // Default to Indonesian
   const [tiles, setTiles] = useState([]);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const navRefs = useRef([]);
   const timelineRefs = useRef([]);
+  const teamGalleryRef = useRef(null);
+  const teamIsInteracting = useRef(false);
+  const ctaCardRef = useRef(null);
+  const isScrollingToSection = useRef(false);
+  const scrollTimeoutRef = useRef(null);
 
   const t = {
     en: {
@@ -73,6 +80,51 @@ const LandingPage = () => {
   }, []);
 
   useEffect(() => {
+    const interval = setInterval(() => {
+      if (window.innerWidth > 768) return; // Only auto-scroll on mobile viewports
+      if (teamIsInteracting.current) return;
+
+      const container = teamGalleryRef.current;
+      if (container) {
+        const cardWidth = 270; // 250px card width + 20px gap
+        const maxScroll = container.scrollWidth - container.clientWidth;
+        let nextScroll;
+        
+        // If we are already near the end (last card), jump back to start instantly
+        if (container.scrollLeft >= maxScroll - 15) {
+          container.scrollTo({
+            left: 0,
+            behavior: 'auto'
+          });
+        } else {
+          let nextScroll = container.scrollLeft + cardWidth;
+          // Clamp to maxScroll to snap exactly onto the last card
+          if (nextScroll > maxScroll) {
+            nextScroll = maxScroll;
+          }
+          container.scrollTo({
+            left: nextScroll,
+            behavior: 'smooth'
+          });
+        }
+      }
+    }, 3000); // Auto-scroll every 3 seconds
+
+    return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    if (mobileMenuOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [mobileMenuOpen]);
+
+  useEffect(() => {
     // Generate 144 tiles (12x12 grid) with random animation delays
     const newTiles = Array.from({ length: 144 }).map((_, i) => ({
       id: i,
@@ -105,19 +157,35 @@ const LandingPage = () => {
   useEffect(() => {
     const handleScroll = () => {
       setScrolled(window.scrollY > 50);
+
+      if (isScrollingToSection.current) return;
+
+      // Check if we are at the bottom of the page
+      const isBottom = window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 50;
+      if (isBottom) {
+        setActiveSection('news');
+        return;
+      }
+
+      // Scroll Spy
+      const sections = ['home', 'features', 'about', 'team', 'news'];
+      const scrollPosition = window.scrollY + 160; // offset for sticky header
+
+      for (const sectionId of sections) {
+        const el = document.getElementById(sectionId);
+        if (el) {
+          const top = el.offsetTop;
+          const height = el.offsetHeight;
+          if (scrollPosition >= top && scrollPosition < top + height) {
+            setActiveSection(sectionId);
+            break;
+          }
+        }
+      }
     };
     window.addEventListener('scroll', handleScroll);
+    handleScroll();
     
-    // Set initial indicator position
-    setTimeout(() => {
-      if (navRefs.current[0]) {
-        setIndicatorStyle({
-          width: navRefs.current[0].offsetWidth,
-          left: navRefs.current[0].offsetLeft
-        });
-      }
-    }, 100);
-
     // Setup Intersection Observer for timeline animation
     const observer = new IntersectionObserver(
       (entries) => {
@@ -130,15 +198,61 @@ const LandingPage = () => {
       { threshold: 0.2, rootMargin: '0px 0px -100px 0px' }
     );
 
+    // Setup a more lenient observer for CTA card at the bottom of the page
+    const ctaObserver = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('animate-in');
+          }
+        });
+      },
+      { threshold: 0.05, rootMargin: '0px' }
+    );
+
     timelineRefs.current.forEach((ref) => {
       if (ref) observer.observe(ref);
     });
 
+    if (ctaCardRef.current) {
+      ctaObserver.observe(ctaCardRef.current);
+    }
+
     return () => {
       window.removeEventListener('scroll', handleScroll);
       observer.disconnect();
+      ctaObserver.disconnect();
+      if (scrollTimeoutRef.current) {
+        clearTimeout(scrollTimeoutRef.current);
+      }
     };
   }, []);
+
+  // Update navbar indicator style when active section, lang, or window resizing changes
+  useEffect(() => {
+    const updateIndicatorStyle = () => {
+      const sectionIndexMap = {
+        home: 0,
+        features: 1,
+        about: 2,
+        team: 3,
+        news: 4
+      };
+      const index = sectionIndexMap[activeSection];
+      const activeRef = navRefs.current[index];
+      if (activeRef) {
+        setIndicatorStyle({
+          width: activeRef.offsetWidth,
+          left: activeRef.offsetLeft
+        });
+      }
+    };
+
+    updateIndicatorStyle();
+    
+    window.addEventListener('resize', updateIndicatorStyle);
+    return () => window.removeEventListener('resize', updateIndicatorStyle);
+  }, [activeSection, lang]);
 
   const handleMouseEnter = (e) => {
     setIndicatorStyle({
@@ -148,10 +262,19 @@ const LandingPage = () => {
   };
 
   const handleMouseLeave = () => {
-    if (navRefs.current[0]) {
+    const sectionIndexMap = {
+      home: 0,
+      features: 1,
+      about: 2,
+      team: 3,
+      news: 4
+    };
+    const index = sectionIndexMap[activeSection];
+    const activeRef = navRefs.current[index];
+    if (activeRef) {
       setIndicatorStyle({
-        width: navRefs.current[0].offsetWidth,
-        left: navRefs.current[0].offsetLeft
+        width: activeRef.offsetWidth,
+        left: activeRef.offsetLeft
       });
     }
   };
@@ -166,10 +289,24 @@ const LandingPage = () => {
       const elementPosition = elementRect - bodyRect;
       const offsetPosition = elementPosition - offset;
 
+      // Lock scroll spy updating and set the active section immediately
+      isScrollingToSection.current = true;
+      setActiveSection(id);
+
       window.scrollTo({
         top: offsetPosition,
         behavior: 'smooth'
       });
+
+      // Clear any existing scroll timeout to avoid collision
+      if (scrollTimeoutRef.current) {
+        clearTimeout(scrollTimeoutRef.current);
+      }
+
+      // Reset scroll spy lockout after 1000ms (smooth scroll duration)
+      scrollTimeoutRef.current = setTimeout(() => {
+        isScrollingToSection.current = false;
+      }, 1000);
     }
   };
 
@@ -209,7 +346,7 @@ const LandingPage = () => {
           <div className="nav-links" onMouseLeave={handleMouseLeave}>
             <a 
               href="#home" 
-              className="active" 
+              className={activeSection === 'home' ? 'active' : ''} 
               ref={el => navRefs.current[0] = el} 
               onMouseEnter={handleMouseEnter}
               onClick={(e) => handleScrollToSection(e, 'home')}
@@ -218,6 +355,7 @@ const LandingPage = () => {
             </a>
             <a 
               href="#features" 
+              className={activeSection === 'features' ? 'active' : ''} 
               ref={el => navRefs.current[1] = el} 
               onMouseEnter={handleMouseEnter}
               onClick={(e) => handleScrollToSection(e, 'features')}
@@ -226,6 +364,7 @@ const LandingPage = () => {
             </a>
             <a 
               href="#about" 
+              className={activeSection === 'about' ? 'active' : ''} 
               ref={el => navRefs.current[2] = el} 
               onMouseEnter={handleMouseEnter}
               onClick={(e) => handleScrollToSection(e, 'about')}
@@ -234,6 +373,7 @@ const LandingPage = () => {
             </a>
             <a 
               href="#team" 
+              className={activeSection === 'team' ? 'active' : ''} 
               ref={el => navRefs.current[3] = el} 
               onMouseEnter={handleMouseEnter}
               onClick={(e) => handleScrollToSection(e, 'team')}
@@ -242,6 +382,7 @@ const LandingPage = () => {
             </a>
             <a 
               href="#news" 
+              className={activeSection === 'news' ? 'active' : ''} 
               ref={el => navRefs.current[4] = el} 
               onMouseEnter={handleMouseEnter}
               onClick={(e) => handleScrollToSection(e, 'news')}
@@ -251,7 +392,7 @@ const LandingPage = () => {
             <div className="nav-indicator" style={indicatorStyle}></div>
           </div>
 
-          <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
+          <div className="nav-actions">
             <button 
               onClick={() => setLang(lang === 'en' ? 'id' : 'en')}
               className="lang-toggle-btn"
@@ -268,6 +409,94 @@ const LandingPage = () => {
                   {currentT.login}
                 </Link>
                 <Link to="/register" className="nav-button">
+                  {currentT.register}
+                </Link>
+              </>
+            )}
+          </div>
+
+          {/* Mobile Menu Toggle Button */}
+          <button 
+            className="mobile-menu-toggle"
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            aria-label="Toggle menu"
+          >
+            {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+          </button>
+        </div>
+
+        {/* Mobile Fullscreen Glass Menu */}
+        <div className={`mobile-menu-overlay ${mobileMenuOpen ? 'open' : ''}`}>
+          <div className="mobile-menu-links">
+            <a 
+              href="#home" 
+              className={activeSection === 'home' ? 'active' : ''} 
+              onClick={(e) => {
+                handleScrollToSection(e, 'home');
+                setMobileMenuOpen(false);
+              }}
+            >
+              {currentT.home}
+            </a>
+            <a 
+              href="#features" 
+              className={activeSection === 'features' ? 'active' : ''} 
+              onClick={(e) => {
+                handleScrollToSection(e, 'features');
+                setMobileMenuOpen(false);
+              }}
+            >
+              {currentT.features}
+            </a>
+            <a 
+              href="#about" 
+              className={activeSection === 'about' ? 'active' : ''} 
+              onClick={(e) => {
+                handleScrollToSection(e, 'about');
+                setMobileMenuOpen(false);
+              }}
+            >
+              {currentT.about}
+            </a>
+            <a 
+              href="#team" 
+              className={activeSection === 'team' ? 'active' : ''} 
+              onClick={(e) => {
+                handleScrollToSection(e, 'team');
+                setMobileMenuOpen(false);
+              }}
+            >
+              {currentT.team}
+            </a>
+            <a 
+              href="#news" 
+              className={activeSection === 'news' ? 'active' : ''} 
+              onClick={(e) => {
+                handleScrollToSection(e, 'news');
+                setMobileMenuOpen(false);
+              }}
+            >
+              {currentT.news}
+            </a>
+          </div>
+
+          <div className="mobile-menu-actions">
+            <button 
+              onClick={() => setLang(lang === 'en' ? 'id' : 'en')}
+              className="lang-toggle-btn"
+            >
+              {lang === 'en' ? 'ID' : 'EN'}
+            </button>
+            {isLoggedIn ? (
+              <Link to="/dashboard" className="nav-button" onClick={() => setMobileMenuOpen(false)}>
+                Dashboard
+              </Link>
+            ) : (
+              <>
+                <Link to="/login" className="nav-login-link" onClick={() => setMobileMenuOpen(false)}>
+                  {currentT.login}
+                </Link>
+                <Link to="/register" className="nav-button" onClick={() => setMobileMenuOpen(false)}>
                   {currentT.register}
                 </Link>
               </>
@@ -375,7 +604,14 @@ const LandingPage = () => {
             <h2>{currentT.teamTitle}</h2>
           </div>
 
-          <div className="team-gallery">
+          <div 
+            className="team-gallery" 
+            ref={teamGalleryRef}
+            onMouseEnter={() => { teamIsInteracting.current = true; }}
+            onMouseLeave={() => { teamIsInteracting.current = false; }}
+            onTouchStart={() => { teamIsInteracting.current = true; }}
+            onTouchEnd={() => { teamIsInteracting.current = false; }}
+          >
              <div className="team-member-card size-small">
                <img src={`${baseUrl}team_1.png`} alt="Team member 1" />
              </div>
@@ -484,7 +720,9 @@ const LandingPage = () => {
         </div>
       </section>
 
-      {/* CTA / Footer Section */}
+      {/* Theme Transition Spacer */}
+      <div className="theme-transition-spacer"></div>
+
       <section className="cta-section">
         {/* Light ambient background */}
         <div className="light-glow glow-tl"></div>
@@ -495,18 +733,64 @@ const LandingPage = () => {
         <div className="light-orb orb-2"></div>
         <div className="light-orb orb-3"></div>
 
-        <div className="cta-card">
+        <div className="cta-card" ref={ctaCardRef}>
           <div className="cta-line"></div>
           <h2>{currentT.ready}</h2>
           <p>{currentT.readyDesc}</p>
+          <Link to={isLoggedIn ? "/dashboard" : "/register"} className="cta-btn">
+            {currentT.getStarted}
+          </Link>
           <div className="cta-card-decor">
              <div className="decor-pill"></div>
              <div className="decor-card"></div>
           </div>
         </div>
 
-        <div className="cta-footer-brand">
-          Kantongku
+        <div className="landing-footer">
+          <div className="footer-content">
+            <div className="footer-col brand-col">
+              <span className="footer-logo">Kantongku</span>
+              <p className="footer-desc">
+                {lang === 'en' 
+                  ? 'Take the first step toward financial freedom. Join thousands of users who have mastered budgeting and tracking with Kantongku.' 
+                  : 'Ambil langkah pertama menuju kebebasan finansial. Bergabunglah dengan ribuan pengguna yang telah menguasai penganggaran dan pelacakan bersama Kantongku.'}
+              </p>
+              <div className="footer-cta-wrapper">
+                <Link to={isLoggedIn ? "/dashboard" : "/register"} className="footer-join-btn">
+                  {lang === 'en' ? 'Join Now (Free)' : 'Gabung Sekarang (Gratis)'}
+                </Link>
+              </div>
+            </div>
+            
+            <div className="footer-col links-col">
+              <h4>{lang === 'en' ? 'Navigation' : 'Navigasi'}</h4>
+              <ul>
+                <li><a href="#home" onClick={(e) => handleScrollToSection(e, 'home')}>{currentT.home}</a></li>
+                <li><a href="#features" onClick={(e) => handleScrollToSection(e, 'features')}>{currentT.features}</a></li>
+                <li><a href="#about" onClick={(e) => handleScrollToSection(e, 'about')}>{currentT.about}</a></li>
+                <li><a href="#team" onClick={(e) => handleScrollToSection(e, 'team')}>{currentT.team}</a></li>
+                <li><a href="#news" onClick={(e) => handleScrollToSection(e, 'news')}>{currentT.news}</a></li>
+              </ul>
+            </div>
+            
+            <div className="footer-col contact-col">
+              <h4>{lang === 'en' ? 'Connect' : 'Hubungi Kami'}</h4>
+              <p>Email: support@kantongku.com</p>
+              <p>Bandung, Indonesia</p>
+              <div className="footer-socials">
+                <a href="https://instagram.com" target="_blank" rel="noopener noreferrer">Instagram</a>
+                <a href="https://github.com" target="_blank" rel="noopener noreferrer">GitHub</a>
+                <a href="https://discord.com" target="_blank" rel="noopener noreferrer">Discord</a>
+              </div>
+            </div>
+          </div>
+          
+          <div className="footer-bottom">
+            <p>
+              <span>&copy; {new Date().getFullYear()} Kantongku. {lang === 'en' ? 'All rights reserved.' : 'Hak cipta dilindungi undang-undang.'}</span>
+              <span className="footer-dbs">Powered by DBS Foundation Coding Camp.</span>
+            </p>
+          </div>
         </div>
       </section>
     </div>

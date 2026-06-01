@@ -1,6 +1,7 @@
-import React, { useState, useRef } from 'react';
-import { Upload, Camera, Loader } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { Upload, Camera, Loader, AlertCircle } from 'lucide-react';
 import { useExpense } from '../../context/ExpenseContext';
+import { scannerService, transactionService } from '../../services/api';
 import './Scanner.css';
 
 const ReceiptScanner = () => {
@@ -8,10 +9,20 @@ const ReceiptScanner = () => {
   const [loading, setLoading] = useState(false);
   const [extractedData, setExtractedData] = useState(null);
   const [useCamera, setUseCamera] = useState(false);
+  const [selectedWallet, setSelectedWallet] = useState(null);
+  const [error, setError] = useState(null);
   const fileInputRef = useRef(null);
   const cameraInputRef = useRef(null);
   const videoRef = useRef(null);
-  const { addExpense, categorizeExpense } = useExpense();
+  const fileRefForOCR = useRef(null);
+  const { wallets } = useExpense();
+
+  useEffect(() => {
+    // Auto-select first wallet if available
+    if (wallets.length > 0 && !selectedWallet) {
+      setSelectedWallet(wallets[0].id);
+    }
+  }, [wallets, selectedWallet]);
 
   // Handle file upload
   const handleFileSelect = (e) => {
@@ -21,73 +32,100 @@ const ReceiptScanner = () => {
     }
   };
 
-  // Process file (simulate OCR)
+  // Process file with API OCR
   const processFile = async (file) => {
+    setError(null);
     const reader = new FileReader();
     reader.onload = (e) => {
       setPreview(e.target.result);
-      simulateOCR(file);
+      fileRefForOCR.current = file;
+      performOCR(file);
     };
     reader.readAsDataURL(file);
   };
 
-  // Simulate OCR extraction (replace with real API call later)
-  const simulateOCR = async (file) => {
+  // Call API for OCR extraction
+  const performOCR = async (file) => {
     setLoading(true);
+    setError(null);
     try {
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      const result = await scannerService.extractData(file);
+      
+      console.log('OCR API response:', result);
+      
+      // Handle berbagai format response dari API
+      let data = result;
+      if (result.data) {
+        data = result.data;
+      }
+      
+      if (!data || typeof data !== 'object') {
+        console.error('Invalid response format:', data);
+        throw new Error('Format respons tidak valid dari server. Response: ' + JSON.stringify(result));
+      }
 
-      // Mock extracted data (in real app, this comes from backend)
-      const mockData = {
-        storeName: 'Warung Makan Asri',
-        date: new Date().toLocaleDateString('id-ID'),
-        items: [
-          { name: 'Sate Ayam', price: 25000 },
-          { name: 'Es Teh Manis', price: 8000 },
-          { name: 'Sambal Terasi', price: 2000 },
-        ],
-        subtotal: 35000,
-        total: 35000,
+      // Extract field dengan multiple fallback
+      const total = data.total || data.amount || data.totalAmount || 0;
+      const storeName = data.merchant_name || data.store_name || data.storeName || data.merchant || 'Toko';
+      const items = data.items || data.products || [];
+      const date = data.transaction_date || data.date || data.transactionDate || new Date().toLocaleDateString('id-ID');
+      const subtotal = data.subtotal || data.subTotal || 0;
+
+      console.log('Parsed data:', { total, storeName, items, date, subtotal });
+
+      const extractedResult = {
+        storeName,
+        date,
+        items,
+        subtotal,
+        total,
       };
-
-      setExtractedData(mockData);
+      
+      setExtractedData(extractedResult);
     } catch (error) {
-      console.error('Error processing receipt:', error);
-      alert('Gagal memproses struk. Silakan coba lagi.');
+      console.error('Error during OCR extraction:', error);
+      setError('Gagal memproses struk: ' + (error.message || 'Pastikan gambar jelas dan coba lagi.'));
+      setLoading(false);
     } finally {
       setLoading(false);
     }
   };
 
-  // Submit extracted data
-  const handleSubmit = () => {
-    if (extractedData) {
-      const expense = addExpense({
-        description: extractedData.storeName,
+  // Submit extracted data to API
+  const handleSubmit = async () => {
+    if (!extractedData || !selectedWallet) {
+      setError('Silakan pilih kantong dan pastikan data struk tersedia');
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+    try {
+      // Create transaction with receipt image
+      const transaction = await transactionService.create({
+        wallet_id: selectedWallet,
         amount: extractedData.total,
-        category: 'Uncategorized',
-        receipt: preview,
+        type: 'expense',
+        description: extractedData.storeName,
+        transaction_date: new Date().toISOString().split('T')[0],
+        is_ocr: true,
+        receiptImage: fileRefForOCR.current
       });
-
-      // Auto-categorize (can be improved with ML)
-      const storeName = extractedData.storeName.toLowerCase();
-      let category = 'Lainnya';
-
-      if (storeName.includes('makan') || storeName.includes('warung') || storeName.includes('resto')) {
-        category = 'Makanan & Minuman';
-      } else if (storeName.includes('bensin') || storeName.includes('parkir')) {
-        category = 'Transportasi';
-      } else if (storeName.includes('obat') || storeName.includes('farmasi')) {
-        category = 'Kesehatan';
-      }
-
-      categorizeExpense(expense.id, category);
 
       // Reset
       setPreview(null);
       setExtractedData(null);
-      alert('Pengeluaran berhasil ditambahkan!');
+      setError(null);
+      alert('✅ Pengeluaran berhasil ditambahkan ke ' + wallets.find(w => w.id === selectedWallet)?.title);
+      
+      // Refresh dashboard
+      setTimeout(() => {
+        window.location.reload();
+      }, 1500);
+    } catch (error) {
+      console.error('Error submitting transaction:', error);
+      setError('Gagal menyimpan transaksi. Silakan coba lagi.');
+      setLoading(false);
     }
   };
 
@@ -101,25 +139,69 @@ const ReceiptScanner = () => {
       }
     } catch (error) {
       console.error('Error accessing camera:', error);
-      alert('Tidak dapat mengakses kamera');
+      setError('Tidak dapat mengakses kamera. Gunakan unggah file sebagai alternatif.');
+      setUseCamera(false);
+    }
+  };
+
+  const stopCameraStream = () => {
+    console.log('Stopping camera stream...');
+    try {
+      if (videoRef.current) {
+        // Pause dan unload video
+        videoRef.current.pause();
+        videoRef.current.src = '';
+        
+        // Stop all tracks dengan force
+        if (videoRef.current.srcObject) {
+          const tracks = videoRef.current.srcObject.getTracks();
+          console.log('Stopping', tracks.length, 'tracks');
+          tracks.forEach(track => {
+            console.log('Stopping track:', track.kind, 'enabled:', track.enabled);
+            track.enabled = false;
+            track.stop();
+          });
+          videoRef.current.srcObject = null;
+        }
+      }
+    } catch (error) {
+      console.error('Error stopping camera stream:', error);
     }
   };
 
   const handleCapture = () => {
-    if (videoRef.current) {
+    if (!videoRef.current) {
+      setError('Kamera tidak siap. Coba lagi.');
+      return;
+    }
+
+    try {
       const canvas = document.createElement('canvas');
       canvas.width = videoRef.current.videoWidth;
       canvas.height = videoRef.current.videoHeight;
+      
+      if (canvas.width === 0 || canvas.height === 0) {
+        setError('Video belum siap. Tunggu sebentar dan coba lagi.');
+        return;
+      }
+
       const ctx = canvas.getContext('2d');
       ctx.drawImage(videoRef.current, 0, 0);
       
       canvas.toBlob(blob => {
+        if (!blob || blob.size === 0) {
+          setError('Foto tidak berhasil diambil. Coba lagi.');
+          return;
+        }
         processFile(blob);
         setUseCamera(false);
-        if (videoRef.current?.srcObject) {
-          videoRef.current.srcObject.getTracks().forEach(track => track.stop());
-        }
-      });
+        stopCameraStream();
+      }, 'image/jpeg', 0.9);
+    } catch (error) {
+      console.error('Error capturing:', error);
+      setError('Gagal mengambil foto: ' + error.message);
+      setUseCamera(false);
+      stopCameraStream();
     }
   };
 
@@ -130,7 +212,31 @@ const ReceiptScanner = () => {
         <p>Upload atau ambil foto struk belanja Anda</p>
       </div>
 
-      {/* Camera View */}
+      {/* Wallet Selector */}
+      <div className="wallet-selector">
+        <label htmlFor="wallet-select">Pilih Kantong:</label>
+        <select
+          id="wallet-select"
+          value={selectedWallet || ''}
+          onChange={(e) => setSelectedWallet(e.target.value)}
+          className="wallet-select-input"
+        >
+          <option value="">-- Pilih Kantong --</option>
+          {wallets.map(wallet => (
+            <option key={wallet.id} value={wallet.id}>
+              {wallet.title} ({wallet.amount})
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {/* Error Message */}
+      {error && (
+        <div className="error-alert">
+          <AlertCircle size={20} />
+          <span>{error}</span>
+        </div>
+      )}
       {useCamera && (
         <div className="camera-view">
           <video ref={videoRef} autoPlay playsInline />
@@ -142,9 +248,7 @@ const ReceiptScanner = () => {
               className="btn btn-secondary"
               onClick={() => {
                 setUseCamera(false);
-                if (videoRef.current?.srcObject) {
-                  videoRef.current.srcObject.getTracks().forEach(track => track.stop());
-                }
+                stopCameraStream();
               }}
             >
               Batal

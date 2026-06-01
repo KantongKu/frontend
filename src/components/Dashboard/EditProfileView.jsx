@@ -1,38 +1,71 @@
-import React, { useState, useEffect } from 'react';
-import { ChevronLeft, Camera, User, Mail, Phone, Lock, Save } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { ChevronLeft, Camera, User, Mail, Save } from 'lucide-react';
+import { userService } from '../../services/api';
 import './EditProfileView.css';
 
 const EditProfileView = ({ onBack, onSave }) => {
-  const [name, setName] = useState('Budi Santoso');
-  const [email, setEmail] = useState('budi.santoso@example.com');
-  const [phone, setPhone] = useState('+62 812 3456 7890');
+  const [fullName, setFullName] = useState('');
+  const [email, setEmail] = useState('');
+  const [avatarUrl, setAvatarUrl] = useState('');
+  const [avatarFile, setAvatarFile] = useState(null);
+  const [avatarPreview, setAvatarPreview] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const fileInputRef = useRef(null);
 
   useEffect(() => {
     const activeUserJson = localStorage.getItem('activeUser');
     if (activeUserJson) {
       const activeUser = JSON.parse(activeUserJson);
-      if (activeUser.name) setName(activeUser.name);
+      if (activeUser.full_name) setFullName(activeUser.full_name);
       if (activeUser.email) setEmail(activeUser.email);
+      if (activeUser.avatar_url) setAvatarUrl(activeUser.avatar_url);
     }
   }, []);
 
-  const handleSave = () => {
-    const activeUserJson = localStorage.getItem('activeUser');
-    if (activeUserJson) {
-      const activeUser = JSON.parse(activeUserJson);
-      const oldEmail = activeUser.email;
-      activeUser.name = name;
-      activeUser.email = email;
-      
-      localStorage.setItem('activeUser', JSON.stringify(activeUser));
-      localStorage.setItem(`user_${email}`, JSON.stringify(activeUser));
-      if (oldEmail !== email) {
-        localStorage.removeItem(`user_${oldEmail}`);
-      }
-    }
-    onSave('Profil berhasil diperbarui!');
-    onBack();
+  const handleAvatarClick = () => {
+    fileInputRef.current?.click();
   };
+
+  const handleAvatarChange = (e) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setAvatarFile(file);
+      // Create preview
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setAvatarPreview(reader.result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleSave = async () => {
+    try {
+      setLoading(true);
+      setError('');
+      
+      // Prepare data - use FormData if avatar file exists
+      const updateData = {
+        full_name: fullName,
+        email: email,
+        avatar: avatarFile
+      };
+
+      // Update profile via API
+      await userService.updateProfile(updateData);
+
+      onSave('Profil berhasil diperbarui!');
+      onBack();
+    } catch (err) {
+      console.error('Error updating profile:', err);
+      setError('Gagal memperbarui profil. Silakan coba lagi.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const displayAvatar = avatarPreview || avatarUrl || 'https://i.pravatar.cc/150?img=11';
 
   return (
     <div className="edit-profile-view">
@@ -47,12 +80,28 @@ const EditProfileView = ({ onBack, onSave }) => {
       <div className="ep-content">
         <div className="ep-avatar-section">
           <div className="ep-avatar-wrapper">
-            <img src="https://i.pravatar.cc/150?img=11" alt="Profile" className="ep-avatar" />
-            <button className="ep-camera-btn">
+            <img src={displayAvatar} alt="Profile" className="ep-avatar" />
+            <button 
+              className="ep-camera-btn" 
+              onClick={handleAvatarClick}
+              type="button"
+            >
               <Camera size={18} />
             </button>
           </div>
+          <input 
+            ref={fileInputRef}
+            type="file" 
+            accept="image/*"
+            onChange={handleAvatarChange}
+            style={{ display: 'none' }}
+          />
+          {avatarPreview && (
+            <p className="ep-avatar-hint">Foto preview dipilih</p>
+          )}
         </div>
+
+        {error && <p className="ep-error-message">{error}</p>}
 
         <div className="ep-form-group">
           <label>Nama Lengkap</label>
@@ -60,9 +109,10 @@ const EditProfileView = ({ onBack, onSave }) => {
             <User size={20} className="ep-input-icon" />
             <input 
               type="text" 
-              value={name} 
-              onChange={(e) => setName(e.target.value)}
+              value={fullName} 
+              onChange={(e) => setFullName(e.target.value)}
               className="ep-input"
+              disabled={loading}
             />
           </div>
         </div>
@@ -76,34 +126,16 @@ const EditProfileView = ({ onBack, onSave }) => {
               value={email} 
               onChange={(e) => setEmail(e.target.value)}
               className="ep-input"
+              disabled={loading}
             />
           </div>
         </div>
-
-        <div className="ep-form-group">
-          <label>Nomor Telepon</label>
-          <div className="ep-input-wrapper">
-            <Phone size={20} className="ep-input-icon" />
-            <input 
-              type="text" 
-              value={phone} 
-              onChange={(e) => setPhone(e.target.value)}
-              className="ep-input"
-            />
-          </div>
-        </div>
-
-        <button className="ep-change-pin-btn">
-          <Lock size={18} />
-          Ubah PIN / Password
-        </button>
-
       </div>
       
       <div className="ep-footer">
-        <button className="ep-save-btn" onClick={handleSave}>
+        <button className="ep-save-btn" onClick={handleSave} disabled={loading}>
           <Save size={20} />
-          Simpan Perubahan
+          {loading ? 'Menyimpan...' : 'Simpan Perubahan'}
         </button>
       </div>
     </div>
