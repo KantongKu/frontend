@@ -208,3 +208,203 @@
   max-height: 90vh;
   object-fit: contain;
 }
+
+/* Dropdown Menu & Edit Modal for Pockets */
+.pd-header {
+  position: relative; /* Ensure dropdown aligns correctly */
+}
+
+.pd-dropdown-menu {
+  position: absolute;
+  top: 48px;
+  right: -8px;
+  background: rgba(30, 41, 59, 0.95);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
+  z-index: 1000;
+  min-width: 140px;
+  animation: fadeIn 0.2s ease-out;
+}
+
+.pd-dropdown-menu button {
+  background: transparent;
+  border: none;
+  color: white;
+  padding: 10px 16px;
+  text-align: left;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: all 0.2s;
+}
+
+.pd-dropdown-menu button:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.pd-dropdown-menu button.text-red {
+  color: #ef4444;
+}
+
+.pd-dropdown-menu button.text-red:hover {
+  background: rgba(239, 68, 68, 0.15);
+}
+
+/* Edit Pocket Modal Overlay */
+.edit-pocket-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1999;
+  padding: 24px;
+}
+
+.ep-modal-glass {
+  background: rgba(30, 41, 59, 0.9);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 24px;
+  padding: 32px;
+  width: 100%;
+  max-width: 400px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+  animation: modalScaleUp 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes modalScaleUp {
+  from { transform: scale(0.9); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+.ep-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.ep-header h3 {
+  color: white;
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.ep-btn-close {
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.6);
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s;
+}
+
+.ep-btn-close:hover {
+  color: white;
+}
+
+.ep-content {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: 32px;
+}
+
+.ep-input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ep-input-group label {
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.8);
+  letter-spacing: 0.5px;
+}
+
+.ep-input-group input {
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 14px 16px;
+  border-radius: 12px;
+  color: white;
+  font-size: 15px;
+  transition: all 0.2s;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.ep-input-group input:focus {
+  outline: none;
+  border-color: #3b82f6;
+  background: rgba(15, 23, 42, 0.8);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+}
+
+.ep-footer {
+  display: flex;
+  gap: 12px;
+}
+
+.ep-btn-cancel {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.05);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 14px;
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.ep-btn-cancel:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.ep-btn-submit {
+  flex: 2;
+  background: #3b82f6;
+  color: white;
+  border: none;
+  padding: 14px;
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
+}
+
+.ep-btn-submit:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
+}
+
+.ep-btn-submit:disabled, .ep-btn-cancel:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
