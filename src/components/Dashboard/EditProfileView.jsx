@@ -6,6 +6,7 @@ import './EditProfileView.css';
 const EditProfileView = ({ onBack, onSave }) => {
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
+  const [monthlyIncome, setMonthlyIncome] = useState('');
   const [avatarUrl, setAvatarUrl] = useState('');
   const [avatarFile, setAvatarFile] = useState(null);
   const [avatarPreview, setAvatarPreview] = useState('');
@@ -20,6 +21,8 @@ const EditProfileView = ({ onBack, onSave }) => {
       if (activeUser.full_name) setFullName(activeUser.full_name);
       if (activeUser.email) setEmail(activeUser.email);
       if (activeUser.avatar_url) setAvatarUrl(activeUser.avatar_url);
+      if (activeUser.monthly_income !== undefined) setMonthlyIncome(activeUser.monthly_income.toString());
+      else if (activeUser.monthlyIncome !== undefined) setMonthlyIncome(activeUser.monthlyIncome.toString());
     }
   }, []);
 
@@ -49,6 +52,7 @@ const EditProfileView = ({ onBack, onSave }) => {
       const updateData = {
         full_name: fullName,
         email: email,
+        monthly_income: Number(monthlyIncome || 0),
         avatar: avatarFile
       };
 
@@ -126,6 +130,21 @@ const EditProfileView = ({ onBack, onSave }) => {
               value={email} 
               onChange={(e) => setEmail(e.target.value)}
               className="ep-input"
+              disabled={loading}
+            />
+          </div>
+        </div>
+
+        <div className="ep-form-group">
+          <label>Pemasukan Bulanan / Gaji</label>
+          <div className="ep-input-wrapper">
+            <span className="ep-input-icon" style={{ fontStyle: 'normal', fontWeight: 'bold', fontSize: '15px' }}>Rp</span>
+            <input 
+              type="number" 
+              value={monthlyIncome} 
+              onChange={(e) => setMonthlyIncome(e.target.value)}
+              className="ep-input"
+              placeholder="0"
               disabled={loading}
             />
           </div>

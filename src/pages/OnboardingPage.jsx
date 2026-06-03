@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { User, Calendar, Briefcase, DollarSign, Target, Wallet, ArrowRight, CheckCircle } from 'lucide-react';
-import { walletService, transactionService } from '../services/api';
+import { walletService, transactionService, userService } from '../services/api';
 import './OnboardingPage.css';
 
 const OnboardingPage = () => {
@@ -9,6 +9,7 @@ const OnboardingPage = () => {
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({
     name: '',
+    monthlyIncome: '',
     pocketName: 'Kantong Utama',
     initialBalance: ''
   });
@@ -40,22 +41,28 @@ const OnboardingPage = () => {
               localStorage.setItem(`onboarding_completed_${email}`, 'true');
               navigate('/dashboard', { replace: true });
             } else {
-              if (activeUser.name) {
-                setFormData(prev => ({ ...prev, name: activeUser.name }));
-              }
+              setFormData(prev => ({
+                ...prev,
+                name: activeUser.name || prev.name,
+                monthlyIncome: activeUser.monthly_income !== undefined ? activeUser.monthly_income.toString() : (activeUser.monthlyIncome !== undefined ? activeUser.monthlyIncome.toString() : prev.monthlyIncome)
+              }));
               setIsLoading(false);
             }
           })
           .catch(() => {
-            if (activeUser.name) {
-              setFormData(prev => ({ ...prev, name: activeUser.name }));
-            }
+            setFormData(prev => ({
+              ...prev,
+              name: activeUser.name || prev.name,
+              monthlyIncome: activeUser.monthly_income !== undefined ? activeUser.monthly_income.toString() : (activeUser.monthlyIncome !== undefined ? activeUser.monthlyIncome.toString() : prev.monthlyIncome)
+            }));
             setIsLoading(false);
           });
       } else {
-        if (activeUser.name) {
-          setFormData(prev => ({ ...prev, name: activeUser.name }));
-        }
+        setFormData(prev => ({
+          ...prev,
+          name: activeUser.name || prev.name,
+          monthlyIncome: activeUser.monthly_income !== undefined ? activeUser.monthly_income.toString() : (activeUser.monthlyIncome !== undefined ? activeUser.monthlyIncome.toString() : prev.monthlyIncome)
+        }));
         setIsLoading(false);
       }
     } else {
@@ -92,6 +99,7 @@ const OnboardingPage = () => {
       const activeUser = JSON.parse(activeUserJson);
       email = activeUser.email;
       activeUser.name = formData.name;
+      activeUser.monthly_income = Number(formData.monthlyIncome || 0);
       localStorage.setItem('activeUser', JSON.stringify(activeUser));
       if (email) {
         localStorage.setItem(`onboarding_completed_${email}`, 'true');
@@ -103,6 +111,12 @@ const OnboardingPage = () => {
     localStorage.setItem('onboarding_pocket_name', formData.pocketName || 'Kantong Utama');
     localStorage.setItem('onboarding_initial_balance', formData.initialBalance || '0');
     localStorage.setItem('onboarding_completed', 'true');
+
+    // Call User Service to update profile details in backend
+    userService.updateProfile({
+      full_name: formData.name,
+      monthly_income: Number(formData.monthlyIncome || 0)
+    }).catch(err => console.error("Gagal memperbarui profil di server:", err));
 
     // Call Wallet Service to save pocket in backend
     walletService.create({
@@ -174,6 +188,20 @@ const OnboardingPage = () => {
                     placeholder="Contoh: Budi Santoso" 
                     value={formData.name}
                     onChange={handleChange}
+                  />
+                </div>
+              </div>
+              <div className="input-group">
+                <label>Pemasukan Bulanan / Gaji</label>
+                <div className="input-wrapper">
+                  <span className="currency-prefix">Rp</span>
+                  <input 
+                    type="number" 
+                    name="monthlyIncome"
+                    placeholder="0" 
+                    value={formData.monthlyIncome}
+                    onChange={handleChange}
+                    className="with-prefix"
                   />
                 </div>
               </div>

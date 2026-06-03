@@ -52,6 +52,13 @@ const iconMap = {
 
 const pocketColors = ['pocket-blue', 'pocket-yellow', 'pocket-green', 'pocket-orange', 'pocket-purple'];
 
+// Format Rupiah helper
+export const formatRupiah = (value) => {
+  const isNegative = value < 0;
+  const absValue = Math.abs(value);
+  return `${isNegative ? '- ' : ''}Rp ${absValue.toLocaleString('id-ID')}`;
+};
+
 // Schema Mapping Utility for Wallets/Budget Pockets
 export const mapWalletToFrontend = (w, index = 0) => {
   const id = w.wallet_id || w.id || w._id;
@@ -78,7 +85,7 @@ export const mapWalletToFrontend = (w, index = 0) => {
   return {
     id,
     title,
-    amount: `Rp ${balance.toLocaleString('id-ID')}`,
+    amount: formatRupiah(balance),
     balance, // raw number
     progress,
     colorClass,
@@ -202,10 +209,11 @@ export const userService = {
       if (updateData.avatar) {
         // Create FormData for file upload
         const formData = new FormData();
-        formData.append('full_name', updateData.full_name || '');
-        if (updateData.avatar) {
-          formData.append('avatar', updateData.avatar);
-        }
+        Object.keys(updateData).forEach(key => {
+          if (updateData[key] !== undefined && updateData[key] !== null) {
+            formData.append(key, updateData[key]);
+          }
+        });
         requestData = formData;
         config = {
           headers: {

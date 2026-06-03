@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { walletService, transactionService } from '../services/api';
 
 const ExpenseContext = createContext();
@@ -6,13 +7,63 @@ const ExpenseContext = createContext();
 export const ExpenseProvider = ({ children }) => {
   const [expenses, setExpenses] = useState([]);
   const [budgets, setBudgets] = useState({});
-  const [monthlyIncome, setMonthlyIncome] = useState(5000000);
+  const [monthlyIncome, setMonthlyIncome] = useState(() => {
+    const activeUserJson = localStorage.getItem('activeUser');
+    if (activeUserJson) {
+      try {
+        const activeUser = JSON.parse(activeUserJson);
+        if (activeUser.monthly_income !== undefined) return Number(activeUser.monthly_income);
+        if (activeUser.monthlyIncome !== undefined) return Number(activeUser.monthlyIncome);
+      } catch (e) {}
+    }
+    return 5000000;
+  });
   const [wallets, setWallets] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [token, setToken] = useState(() => localStorage.getItem('token'));
+  const location = useLocation();
 
-  // Load data from API on mount
+  // Sync token and monthlyIncome from localStorage when page navigation occurs
+  useEffect(() => {
+    const currentToken = localStorage.getItem('token');
+    if (currentToken !== token) {
+      setToken(currentToken);
+    }
+
+    const activeUserJson = localStorage.getItem('activeUser');
+    if (activeUserJson) {
+      try {
+        const activeUser = JSON.parse(activeUserJson);
+        const income = activeUser.monthly_income !== undefined ? Number(activeUser.monthly_income) : 
+                       (activeUser.monthlyIncome !== undefined ? Number(activeUser.monthlyIncome) : 5000000);
+        if (income !== monthlyIncome) {
+          setMonthlyIncome(income);
+        }
+      } catch (e) {
+        console.error("Gagal sinkronisasi data user di context:", e);
+      }
+    }
+  }, [location.pathname, token, monthlyIncome]);
+
+  // Load data from API when token is available
   useEffect(() => {
     const loadData = async () => {
+      if (!token) {
+        setLoading(false);
+        setExpenses([]);
+        setWallets([]);
+        setBudgets({
+          'Makanan & Minuman': { limit: 500000, spent: 0 },
+          'Transportasi': { limit: 300000, spent: 0 },
+          'Hiburan': { limit: 200000, spent: 0 },
+          'Utilitas': { limit: 500000, spent: 0 },
+          'Kesehatan': { limit: 300000, spent: 0 },
+          'Pendidikan': { limit: 400000, spent: 0 },
+          'Lainnya': { limit: 200000, spent: 0 },
+        });
+        return;
+      }
+
       try {
         setLoading(true);
         // Fetch wallets
@@ -81,7 +132,7 @@ export const ExpenseProvider = ({ children }) => {
     };
 
     loadData();
-  }, []);
+  }, [token]);
 
   const addExpense = useCallback((expense) => {
     const newExpense = {

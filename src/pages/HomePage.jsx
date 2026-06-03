@@ -16,7 +16,7 @@ import AddTransactionOverlay from '../components/Dashboard/AddTransactionOverlay
 import ExpenseCategorization from '../components/Categorization/ExpenseCategorization';
 import { useNavigate } from 'react-router-dom';
 import { newsItems } from '../data/newsData';
-import { walletService, transactionService } from '../services/api';
+import { walletService, transactionService, formatRupiah } from '../services/api';
 
 const dummyPockets = [
   { id: 1, title: 'Daily Needs', amount: 'Rp 8.200.000', progress: 70, colorClass: 'pocket-blue', Icon: ShoppingBag },
@@ -46,6 +46,7 @@ const HomePage = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [profileRefreshTrigger, setProfileRefreshTrigger] = useState(0);
   const [profileAvatar, setProfileAvatar] = useState('https://i.pravatar.cc/150?img=11');
+  const [monthlyIncome, setMonthlyIncome] = useState(5000000);
 
   const fetchDashboardData = useCallback(() => {
     const activeUserJson = localStorage.getItem('activeUser');
@@ -93,7 +94,7 @@ const HomePage = () => {
 
         // Synthesize virtual "Saldo Awal" transactions for pockets that have a balance but no starting transaction
         fetchedPockets.forEach(pocket => {
-          const initialBal = Number(pocket.balance || 0);
+          const initialBal = Number(pocket.budget_limit || pocket.balance || 0);
           const hasStartingTx = fetchedTx.some(tx => 
             Number(tx.wallet_id || tx.walletId) === Number(pocket.id) && 
             tx.title.toLowerCase().includes('saldo awal')
@@ -140,8 +141,11 @@ const HomePage = () => {
             .filter(tx => tx.type === 'expense')
             .reduce((sum, tx) => sum + (tx.amountVal || 0), 0);
             
-          const initialBudget = Number(pocket.balance || 0);
-          const currentBalance = initialBudget + totalIncome - totalExpense;
+          // Use pocket.budget_limit as the initial budget (fallback to pocket.balance if not set)
+          const initialBudget = Number(pocket.budget_limit || pocket.balance || 0);
+          
+          // Use pocket.balance directly as the current balance, as it already represents the correct balance from the server
+          const currentBalance = pocket.balance || 0;
           
           // Progress based on expenses vs initial budget limit
           const progress = initialBudget > 0 
@@ -152,7 +156,7 @@ const HomePage = () => {
             ...pocket,
             initialBudget, // Store initial budget limit
             balance: currentBalance,
-            amount: `Rp ${currentBalance.toLocaleString('id-ID')}`,
+            amount: formatRupiah(currentBalance),
             progress
           };
         });
@@ -197,6 +201,11 @@ const HomePage = () => {
         }
         if (activeUser.avatar_url) {
           setProfileAvatar(activeUser.avatar_url);
+        }
+        if (activeUser.monthly_income !== undefined) {
+          setMonthlyIncome(Number(activeUser.monthly_income));
+        } else if (activeUser.monthlyIncome !== undefined) {
+          setMonthlyIncome(Number(activeUser.monthlyIncome));
         }
       } catch (e) {
         console.error("Gagal memproses data activeUser pada mount:", e);
@@ -250,8 +259,13 @@ const HomePage = () => {
         } else if (activeUser.name) {
           setUserName(activeUser.name);
         }
+        if (activeUser.monthly_income !== undefined) {
+          setMonthlyIncome(Number(activeUser.monthly_income));
+        } else if (activeUser.monthlyIncome !== undefined) {
+          setMonthlyIncome(Number(activeUser.monthlyIncome));
+        }
       } catch (e) {
-        console.error("Error updating profile avatar:", e);
+        console.error("Error updating profile details:", e);
       }
     }
   }, [profileRefreshTrigger]);
@@ -260,27 +274,22 @@ const HomePage = () => {
     return acc + (pocket.balance || 0);
   }, 0);
 
-  // Calculate dynamic financial health based on income and expenses
-  const totalIncome = activities
-    .filter(tx => tx.type === 'income')
-    .reduce((sum, tx) => sum + (tx.amountVal || 0), 0);
-
+  // Calculate dynamic financial health based on monthly income and expenses
   const totalExpense = activities
     .filter(tx => tx.type === 'expense')
     .reduce((sum, tx) => sum + (tx.amountVal || 0), 0);
 
-  // Health score is the percentage of total funds (starting balance + income) that is NOT spent.
-  // If there are no funds and no expenses, it's a clean 100% slate.
-  // If they spent money but have 0 recorded income/funds, health is 0%.
+  // Health score is calculated based on the monthly income.
+  // If the user hasn't set their income or spent anything, it defaults to 100%.
   let healthScore = 100;
-  if (totalIncome > 0) {
-    healthScore = Math.max(0, Math.min(100, Math.round(((totalIncome - totalExpense) / totalIncome) * 100)));
+  if (monthlyIncome > 0) {
+    healthScore = Math.max(0, Math.min(100, Math.round(((monthlyIncome - totalExpense) / monthlyIncome) * 100)));
   } else if (totalExpense > 0) {
     healthScore = 0;
   }
 
   let healthMessage = "Keuangan Anda seimbang. Mulai mencatat pengeluaran Anda!";
-  if (totalIncome > 0 || totalExpense > 0) {
+  if (monthlyIncome > 0 || totalExpense > 0) {
     if (healthScore >= 90) {
       healthMessage = "Luar biasa! Pengeluaran Anda sangat minim dibanding pemasukan.";
     } else if (healthScore >= 75) {
@@ -459,7 +468,7 @@ const HomePage = () => {
                 {/* Balance Card */}
                 <div className="balance-card">
                   <p className="balance-label">TOTAL SALDO (SEMUA KANTONG)</p>
-                  <h1 className="balance-amount">Rp {totalBalance.toLocaleString('id-ID')}</h1>
+                  <h1 className="balance-amount">{formatRupiah(totalBalance)}</h1>
                   <div className="balance-actions">
                     <button className="action-btn topup-btn" onClick={() => setShowAddTransaction('income')}>
                       <Banknote size={18} />
@@ -513,6 +522,11 @@ const HomePage = () => {
                   <div className="health-info">
                     <h3>Financial Health</h3>
                     <p>{healthMessage}</p>
+                    {monthlyIncome > 0 && (
+                      <p className="health-usage-detail" style={{ fontSize: '13px', color: '#666', marginTop: '8px', fontWeight: '500' }}>
+                        Kamu telah menggunakan <span style={{ color: '#EF4444', fontWeight: '700' }}>Rp {totalExpense.toLocaleString('id-ID')}</span> dari total gaji bulanan <span style={{ color: '#3B82F6', fontWeight: '700' }}>Rp {monthlyIncome.toLocaleString('id-ID')}</span>
+                      </p>
+                    )}
                   </div>
                   <div className="health-chart">
                     <svg viewBox="0 0 36 36" className="circular-chart">

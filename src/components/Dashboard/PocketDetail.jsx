@@ -14,7 +14,7 @@ const PocketDetail = ({ pocket, onBack, onRefresh }) => {
       transactionService.getAll(pocket.id)
         .then(txs => {
           const hasStartingTx = txs.some(tx => tx.title.toLowerCase().includes('saldo awal'));
-          const initialBal = Number(pocket.balance || 0);
+          const initialBal = Number(pocket.budget_limit || pocket.balance || 0);
           if (!hasStartingTx && initialBal > 0) {
             let dateStr = 'Baru saja';
             const dateVal = pocket.createdAt;
