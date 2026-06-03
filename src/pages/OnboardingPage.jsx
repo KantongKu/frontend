@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { User, Calendar, Briefcase, DollarSign, Target, Wallet, ArrowRight, CheckCircle } from 'lucide-react';
-import { walletService, transactionService, userService } from '../services/api';
+import { User, Wallet, ArrowRight, CheckCircle, Sparkles, Cpu, Layers, Briefcase } from 'lucide-react';
+import { walletService, transactionService, userService, formatRupiah } from '../services/api';
+import { getAiPocketRecommendations } from '../services/ai';
 import './OnboardingPage.css';
 
 const OnboardingPage = () => {
@@ -10,9 +11,16 @@ const OnboardingPage = () => {
   const [formData, setFormData] = useState({
     name: '',
     monthlyIncome: '',
+    profession: '',
     pocketName: 'Kantong Utama',
     initialBalance: ''
   });
+  
+  const [onboardingMode, setOnboardingMode] = useState('manual'); // 'manual' | 'ai'
+  const [geminiKey, setGeminiKey] = useState('');
+  const [aiPockets, setAiPockets] = useState([]);
+  const [isAiLoading, setIsAiLoading] = useState(false);
+  const [isActionLoading, setIsActionLoading] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
   // Load registered name on mount and protect route
@@ -70,12 +78,14 @@ const OnboardingPage = () => {
     }
   }, [navigate]);
 
-  if (isLoading) {
+  if (isLoading || isActionLoading) {
     return (
       <div className="dashboard-loading-overlay">
         <div className="loading-spinner-container">
           <div className="loading-spinner-circle"></div>
-          <p className="loading-spinner-text">Memeriksa status onboarding...</p>
+          <p className="loading-spinner-text">
+            {isActionLoading ? "Menyiapkan kantong pintar Anda..." : "Memeriksa status onboarding..."}
+          </p>
         </div>
       </div>
     );
@@ -87,11 +97,43 @@ const OnboardingPage = () => {
   };
 
   const handleNext = () => {
-    if (step < 2) setStep(step + 1);
-    else handleComplete();
+    if (step < 2) {
+      if (!formData.name.trim()) {
+        alert('Nama lengkap wajib diisi');
+        return;
+      }
+      setStep(step + 1);
+    } else {
+      handleComplete();
+    }
   };
 
-  const handleComplete = () => {
+  const handleSelectAiMode = () => {
+    setOnboardingMode('ai');
+    if (aiPockets.length === 0) {
+      generateRecommendations('');
+    }
+  };
+
+  const generateRecommendations = async (customKey) => {
+    setIsAiLoading(true);
+    try {
+      const recs = await getAiPocketRecommendations(
+        formData.monthlyIncome || '5000000',
+        formData.profession,
+        customKey
+      );
+      setAiPockets(recs);
+    } catch (e) {
+      console.error('Error generating AI pockets:', e);
+    } finally {
+      setIsAiLoading(false);
+    }
+  };
+
+  const handleComplete = async () => {
+    setIsActionLoading(true);
+    
     // Sync any edits to the name back to activeUser and set user-specific onboarding flag
     const activeUserJson = localStorage.getItem('activeUser');
     let email = '';
@@ -106,47 +148,81 @@ const OnboardingPage = () => {
       }
     }
 
-    // Save onboarding pocket and balance configuration
+    // Save onboarding details in local storage
     localStorage.setItem('onboarding_name', formData.name);
-    localStorage.setItem('onboarding_pocket_name', formData.pocketName || 'Kantong Utama');
-    localStorage.setItem('onboarding_initial_balance', formData.initialBalance || '0');
     localStorage.setItem('onboarding_completed', 'true');
 
-    // Call User Service to update profile details in backend
-    userService.updateProfile({
-      full_name: formData.name,
-      monthly_income: Number(formData.monthlyIncome || 0)
-    }).catch(err => console.error("Gagal memperbarui profil di server:", err));
+    try {
+      // Call User Service to update profile details in backend
+      await userService.updateProfile({
+        full_name: formData.name,
+        monthly_income: Number(formData.monthlyIncome || 0)
+      });
 
-    // Call Wallet Service to save pocket in backend
-    walletService.create({
-      name: formData.pocketName || 'Kantong Utama',
-      balance: Number(formData.initialBalance || 0),
-      budget_limit: Number(formData.initialBalance || 0),
-      icon: 'Wallet',
-      color: 'pocket-blue'
-    })
-    .then((createdWallet) => {
-      // If they inputted an initial balance, let's create a transaction too!
-      const initialBal = Number(formData.initialBalance || 0);
-      if (initialBal > 0 && createdWallet && createdWallet.id) {
-        return transactionService.create({
-          wallet_id: createdWallet.id,
-          amount: initialBal,
-          type: 'income',
-          description: 'Saldo Awal Onboarding',
-          category: 'Pemasukan'
+      if (onboardingMode === 'manual') {
+        localStorage.setItem('onboarding_pocket_name', formData.pocketName || 'Kantong Utama');
+        localStorage.setItem('onboarding_initial_balance', formData.initialBalance || '0');
+
+        // Call Wallet Service to save pocket in backend
+        const createdWallet = await walletService.create({
+          name: formData.pocketName || 'Kantong Utama',
+          budget_limit: Number(formData.initialBalance || 0),
+          icon: 'Wallet',
+          color: 'pocket-blue'
         });
+
+        // If they inputted an initial balance, let's create a transaction too!
+        const initialBal = Number(formData.initialBalance || 0);
+        if (initialBal > 0 && createdWallet && createdWallet.id) {
+          await transactionService.create({
+            wallet_id: createdWallet.id,
+            amount: initialBal,
+            type: 'income',
+            description: 'Saldo Awal Onboarding',
+            category: 'Pemasukan'
+          });
+        }
+      } else {
+        // AI Mode: Create all recommended pockets in sequence
+        const colors = ['pocket-blue', 'pocket-yellow', 'pocket-green', 'pocket-orange', 'pocket-purple'];
+        const targetPockets = aiPockets.length > 0 ? aiPockets : [
+          { name: 'Tabungan & Investasi', allocated_amount: Math.round(Number(formData.monthlyIncome || 0) * 0.2) },
+          { name: 'Kebutuhan (Makan & Tagihan)', allocated_amount: Math.round(Number(formData.monthlyIncome || 0) * 0.5) },
+          { name: 'Jajan & Hiburan', allocated_amount: Math.round(Number(formData.monthlyIncome || 0) * 0.2) },
+          { name: 'Dana Cadangan', allocated_amount: Math.round(Number(formData.monthlyIncome || 0) * 0.1) }
+        ];
+
+        for (let i = 0; i < targetPockets.length; i++) {
+          const pocket = targetPockets[i];
+          const color = colors[i % colors.length];
+          
+          const createdWallet = await walletService.create({
+            name: pocket.name,
+            budget_limit: pocket.allocated_amount,
+            icon: 'Wallet',
+            color: color
+          });
+          
+          if (createdWallet && createdWallet.id && pocket.allocated_amount > 0) {
+            await transactionService.create({
+              wallet_id: createdWallet.id,
+              amount: pocket.allocated_amount,
+              type: 'income',
+              description: 'Saldo Awal (AI Onboarding)',
+              category: 'Pemasukan'
+            });
+          }
+        }
       }
-    })
-    .then(() => {
+
       navigate('/dashboard');
-    })
-    .catch((err) => {
-      console.error("Gagal membuat kantong utama di server:", err);
+    } catch (err) {
+      console.error("Gagal memproses pembuatan kantong onboarding:", err);
       // Fallback redirect so user is not stuck on error
       navigate('/dashboard');
-    });
+    } finally {
+      setIsActionLoading(false);
+    }
   };
 
   return (
@@ -167,11 +243,11 @@ const OnboardingPage = () => {
           </div>
           <h2>
             {step === 1 && "Halo! Mari Kenalan"}
-            {step === 2 && "Buat Kantong Pertama"}
+            {step === 2 && "Setup Kantong Keuangan"}
           </h2>
           <p>
             {step === 1 && "Beri tahu kami nama lengkap Anda agar pengalaman KantongKu lebih personal."}
-            {step === 2 && "Tentukan dompet atau kantong utama yang akan Anda pantau pengeluarannya."}
+            {step === 2 && "Pilih metode pembagian kantong untuk memantau pengeluaran Anda."}
           </p>
         </div>
 
@@ -205,44 +281,136 @@ const OnboardingPage = () => {
                   />
                 </div>
               </div>
+              <div className="input-group">
+                <label>Status / Pekerjaan Saat Ini</label>
+                <div className="input-wrapper">
+                  <Briefcase size={20} className="input-icon" />
+                  <input 
+                    type="text" 
+                    name="profession"
+                    placeholder="Contoh: Software Engineer, Mahasiswa, Driver Ojek Online" 
+                    value={formData.profession}
+                    onChange={handleChange}
+                  />
+                </div>
+              </div>
             </div>
           )}
 
           {step === 2 && (
             <div className="form-step slide-in">
-              <div className="pocket-preview">
-                <div className="pocket-preview-icon">
-                  <Wallet size={32} color="white" />
-                </div>
-                <h3>{formData.pocketName || "Kantong Utama"}</h3>
+              {/* Method Selector */}
+              <div className="onboarding-mode-selector">
+                <button 
+                  type="button"
+                  className={`mode-card ${onboardingMode === 'manual' ? 'active' : ''}`}
+                  onClick={() => setOnboardingMode('manual')}
+                >
+                  <Wallet size={24} className="mode-icon" />
+                  <div className="mode-text">
+                    <h4>Setup Manual</h4>
+                    <p>Buat satu kantong utama & atur saldo sendiri</p>
+                  </div>
+                </button>
+                
+                <button 
+                  type="button"
+                  className={`mode-card ${onboardingMode === 'ai' ? 'active' : ''}`}
+                  onClick={handleSelectAiMode}
+                >
+                  <Sparkles size={24} className="mode-icon ai-sparkle-icon" />
+                  <div className="mode-text">
+                    <h4>Rekomendasi Pintar (AI)</h4>
+                    <p>Bagi alokasi gaji bulanan otomatis</p>
+                  </div>
+                </button>
               </div>
-              
-              <div className="input-group">
-                <label>Nama Kantong</label>
-                <div className="input-wrapper">
-                  <Wallet size={20} className="input-icon" />
-                  <input 
-                    type="text" 
-                    name="pocketName"
-                    value={formData.pocketName}
-                    onChange={handleChange}
-                  />
+
+              {/* Manual Mode Layout */}
+              {onboardingMode === 'manual' && (
+                <div className="manual-config-section fade-in">
+                  <div className="pocket-preview">
+                    <div className="pocket-preview-icon">
+                      <Wallet size={32} color="white" />
+                    </div>
+                    <h3>{formData.pocketName || "Kantong Utama"}</h3>
+                  </div>
+                  
+                  <div className="input-group">
+                    <label>Nama Kantong</label>
+                    <div className="input-wrapper">
+                      <Wallet size={20} className="input-icon" />
+                      <input 
+                        type="text" 
+                        name="pocketName"
+                        value={formData.pocketName}
+                        onChange={handleChange}
+                      />
+                    </div>
+                  </div>
+                  <div className="input-group">
+                    <label>Saldo Saat Ini</label>
+                    <div className="input-wrapper">
+                      <span className="currency-prefix">Rp</span>
+                      <input 
+                        type="number" 
+                        name="initialBalance"
+                        placeholder="0" 
+                        value={formData.initialBalance}
+                        onChange={handleChange}
+                        className="with-prefix"
+                      />
+                    </div>
+                  </div>
                 </div>
-              </div>
-              <div className="input-group">
-                <label>Saldo Saat Ini</label>
-                <div className="input-wrapper">
-                  <span className="currency-prefix">Rp</span>
-                  <input 
-                    type="number" 
-                    name="initialBalance"
-                    placeholder="0" 
-                    value={formData.initialBalance}
-                    onChange={handleChange}
-                    className="with-prefix"
-                  />
+              )}
+
+              {/* AI Mode Layout */}
+              {onboardingMode === 'ai' && (
+                <div className="ai-config-section fade-in">
+                  {isAiLoading ? (
+                    <div className="ai-loading-container">
+                      <div className="loading-spinner-circle"></div>
+                      <p>Menganalisis pendapatan & merancang anggaran terbaik...</p>
+                    </div>
+                  ) : (
+                    aiPockets.length > 0 && (
+                      <div className="ai-table-container slide-in">
+                        <h4>Saran Pembagian Kantong</h4>
+                        <div className="ai-table-responsive">
+                          <table className="ai-pockets-table">
+                            <thead>
+                              <tr>
+                                <th>Nama Kantong</th>
+                                <th>Persentase</th>
+                                <th>Alokasi Dana</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {aiPockets.map((pocket, index) => (
+                                <tr key={index}>
+                                  <td className="pocket-name-cell">
+                                    <div className="table-pocket-tag"></div>
+                                    {pocket.name}
+                                  </td>
+                                  <td className="pocket-pct-cell">{pocket.percentage}%</td>
+                                  <td>{formatRupiah(pocket.allocated_amount)}</td>
+                                </tr>
+                              ))}
+                              <tr className="table-total-row">
+                                <td>TOTAL</td>
+                                <td>100%</td>
+                                <td>{formatRupiah(Number(formData.monthlyIncome || 0))}</td>
+                                <td></td>
+                              </tr>
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    )
+                  )}
                 </div>
-              </div>
+              )}
             </div>
           )}
 
@@ -267,3 +435,4 @@ const OnboardingPage = () => {
 };
 
 export default OnboardingPage;
+
