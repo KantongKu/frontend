@@ -114,3 +114,83 @@ Kembalikan hasilnya HANYA berupa JSON array of objects tanpa pembungkus markdown
     return getFallbackAllocation(parsedIncome);
   }
 };
+
+export const getAiPocketSuggestion = async (pocketName, monthlyIncome, profession = '', apiKey = '') => {
+  const parsedIncome = Number(monthlyIncome || 0);
+  const activeApiKey = apiKey || import.meta.env.VITE_GEMINI_API_KEY || '';
+
+  const fallbackLimit = Math.round(parsedIncome * 0.20);
+  const fallbackReason = '20% dari pendapatan bulanan Anda (alokasi tabungan standar).';
+
+  if (!pocketName.trim()) {
+    return {
+      suggested_limit: fallbackLimit,
+      reason: 'Nama kantong kosong. AI menyarankan alokasi 20% sebagai default.'
+    };
+  }
+
+  if (!activeApiKey) {
+    console.log('No Gemini API Key provided for single suggestion. Using local calculation.');
+    return {
+      suggested_limit: fallbackLimit,
+      reason: fallbackReason
+    };
+  }
+
+  try {
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${activeApiKey}`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          contents: [
+            {
+              parts: [
+                {
+                  text: `Anda adalah asisten perencana keuangan pribadi. Berdasarkan pendapatan bulanan sebesar Rp ${parsedIncome}, pekerjaan/profesi sebagai "${profession || 'Umum'}", dan nama kantong anggaran keuangan yang akan dibuat/diubah yaitu "${pocketName}", berikan rekomendasi jumlah target limit anggaran bulanan yang rasional untuk kantong tersebut dalam mata uang Rupiah.
+Kembalikan hasilnya HANYA berupa JSON object dengan key berikut secara presisi:
+- "suggested_limit": jumlah anggaran yang disarankan dalam angka bulat (number, contoh: 1000000)
+- "reason": penjelasan singkat (maksimal 150 karakter) dalam bahasa Indonesia tentang mengapa jumlah ini disarankan (misalnya "10% dari gaji bulanan Anda untuk pos traveling agar keuangan tetap stabil.")`
+                }
+              ]
+            }
+          ],
+          generationConfig: {
+            responseMimeType: 'application/json'
+          }
+        })
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error(`Gemini API returned status ${response.status}`);
+    }
+
+    const data = await response.json();
+    const responseText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+    
+    if (!responseText) {
+      throw new Error('Empty response from Gemini API');
+    }
+
+    const parsedData = JSON.parse(responseText.trim());
+    if (parsedData && parsedData.suggested_limit !== undefined) {
+      return {
+        suggested_limit: Number(parsedData.suggested_limit),
+        reason: parsedData.reason || 'Berdasarkan analisis AI.'
+      };
+    }
+
+    throw new Error('Parsed output does not contain suggested_limit');
+  } catch (error) {
+    console.error('Error getting single AI suggestion:', error);
+    return {
+      suggested_limit: fallbackLimit,
+      reason: fallbackReason
+    };
+  }
+};
+

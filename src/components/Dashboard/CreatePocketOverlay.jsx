@@ -1,22 +1,41 @@
 import React, { useState } from 'react';
 import { X, Sparkles, Check, Wallet } from 'lucide-react';
 import { useExpense } from '../../context/ExpenseContext';
+import { getAiPocketSuggestion } from '../../services/ai';
 import './CreatePocketOverlay.css';
 
 const CreatePocketOverlay = ({ onClose, onAddDummyPocket }) => {
   const { monthlyIncome } = useExpense();
   const [pocketName, setPocketName] = useState('');
   const [targetAmount, setTargetAmount] = useState('');
+  const [aiReason, setAiReason] = useState('');
   const [isAiProcessing, setIsAiProcessing] = useState(false);
 
-  const handleAiRecommendation = () => {
+  const handleNameChange = (e) => {
+    setPocketName(e.target.value);
+    if (aiReason) setAiReason('');
+  };
+
+  const handleAiRecommendation = async () => {
+    if (!pocketName.trim()) {
+      alert('Masukkan nama kantong terlebih dahulu agar AI dapat memberikan saran yang relevan.');
+      return;
+    }
     setIsAiProcessing(true);
-    setTimeout(() => {
-      // Rekomendasi alokasi tabungan ideal sebesar 20% dari total pendapatan bulanan
-      const suggestion = Math.round(monthlyIncome * 0.20);
-      setTargetAmount(suggestion.toString());
+    try {
+      const activeUserJson = localStorage.getItem('activeUser');
+      const activeUser = activeUserJson ? JSON.parse(activeUserJson) : {};
+      const profession = activeUser.profession || ''; // optional
+
+      const res = await getAiPocketSuggestion(pocketName, monthlyIncome, profession);
+      setTargetAmount(res.suggested_limit.toString());
+      setAiReason(res.reason);
+    } catch (e) {
+      console.error('Error getting AI recommendation:', e);
+      alert('Gagal mendapatkan rekomendasi AI.');
+    } finally {
       setIsAiProcessing(false);
-    }, 1200);
+    }
   };
 
   const handleCreate = () => {
@@ -55,7 +74,7 @@ const CreatePocketOverlay = ({ onClose, onAddDummyPocket }) => {
               type="text" 
               placeholder="Contoh: Belanja Bulanan, Traveling, Tabungan" 
               value={pocketName}
-              onChange={(e) => setPocketName(e.target.value)}
+              onChange={handleNameChange}
             />
           </div>
         </div>
@@ -67,7 +86,7 @@ const CreatePocketOverlay = ({ onClose, onAddDummyPocket }) => {
             <div className="cp-ai-info">
               <Sparkles size={20} className="text-yellow" />
               <div>
-                <h4>Rekomendasi AI (20% Savings)</h4>
+                <h4>Rekomendasi AI Pintar</h4>
                 <p>Pendapatan Anda: Rp {monthlyIncome.toLocaleString('id-ID')}</p>
               </div>
             </div>
@@ -79,6 +98,12 @@ const CreatePocketOverlay = ({ onClose, onAddDummyPocket }) => {
               {isAiProcessing ? 'Menghitung...' : 'Minta Saran'}
             </button>
           </div>
+
+          {aiReason && (
+            <p className="cp-ai-reason-text">
+              ✨ <strong>Saran AI:</strong> {aiReason}
+            </p>
+          )}
 
           <div className="cp-input-group mt-16">
             <label>Target Anggaran / Batas Limit (Rp)</label>

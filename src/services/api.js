@@ -1,7 +1,9 @@
 import axios from 'axios';
 import { Wallet, PiggyBank, Plane, Heart, Home, ShoppingBag, Utensils, ShoppingCart, Banknote, HelpCircle } from 'lucide-react';
 
-const API_BASE_URL = 'https://web-production-d907c.up.railway.app/api';
+const API_BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+  ? 'http://localhost:4000/api'
+  : 'https://web-production-d907c.up.railway.app/api';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -186,9 +188,16 @@ export const userService = {
       // Try to fetch from API first - use /auth/profile endpoint
       const response = await getDeduplicated('/auth/profile');
       const profileData = response.data.data || response.data;
+      
+      // Ensure compatibility with both 'name' and 'full_name'
+      const formattedProfile = {
+        ...profileData,
+        name: profileData.full_name || profileData.name
+      };
+      
       // Save to localStorage for persistence
-      localStorage.setItem('activeUser', JSON.stringify(profileData));
-      return profileData;
+      localStorage.setItem('activeUser', JSON.stringify(formattedProfile));
+      return formattedProfile;
     } catch (error) {
       console.error('Error fetching profile from API:', error);
       // Fallback to localStorage if API endpoint not available
@@ -225,9 +234,16 @@ export const userService = {
       // Try to update via API first - use /auth/profile endpoint
       const response = await api.put('/auth/profile', requestData, config);
       const profileData = response.data.data || response.data;
+      
+      // Ensure compatibility with both 'name' and 'full_name'
+      const formattedProfile = {
+        ...profileData,
+        name: profileData.full_name || profileData.name
+      };
+      
       // Update localStorage
-      localStorage.setItem('activeUser', JSON.stringify(profileData));
-      return profileData;
+      localStorage.setItem('activeUser', JSON.stringify(formattedProfile));
+      return formattedProfile;
     } catch (error) {
       console.error('Error updating profile via API:', error);
       // Fallback: Update only in localStorage if API endpoint not available
@@ -236,8 +252,10 @@ export const userService = {
         const activeUser = JSON.parse(activeUserJson);
         const updatedUser = {
           ...activeUser,
+          name: updateData.full_name || activeUser.name || activeUser.full_name,
           full_name: updateData.full_name || activeUser.full_name,
-          email: updateData.email || activeUser.email
+          email: updateData.email || activeUser.email,
+          monthly_income: updateData.monthly_income !== undefined ? updateData.monthly_income : activeUser.monthly_income
           // Note: avatar file can't be stored in localStorage, only URL from API response
         };
         localStorage.setItem('activeUser', JSON.stringify(updatedUser));

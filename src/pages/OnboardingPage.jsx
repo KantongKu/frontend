@@ -141,6 +141,7 @@ const OnboardingPage = () => {
       const activeUser = JSON.parse(activeUserJson);
       email = activeUser.email;
       activeUser.name = formData.name;
+      activeUser.full_name = formData.name;
       activeUser.monthly_income = Number(formData.monthlyIncome || 0);
       localStorage.setItem('activeUser', JSON.stringify(activeUser));
       if (email) {

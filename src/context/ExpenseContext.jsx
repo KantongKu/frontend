@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
-import { walletService, transactionService } from '../services/api';
+import { walletService, transactionService, userService } from '../services/api';
 
 const ExpenseContext = createContext();
 
@@ -66,6 +66,17 @@ export const ExpenseProvider = ({ children }) => {
 
       try {
         setLoading(true);
+        
+        // Fetch and sync user profile (including monthly_income) from API
+        try {
+          const profile = await userService.getProfile();
+          if (profile && profile.monthly_income !== undefined) {
+            setMonthlyIncome(Number(profile.monthly_income));
+          }
+        } catch (profileError) {
+          console.error("Gagal mengambil profil di context:", profileError);
+        }
+
         // Fetch wallets
         const fetchedWallets = await walletService.getAll();
         setWallets(fetchedWallets);

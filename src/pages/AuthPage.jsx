@@ -109,7 +109,15 @@ const AuthPage = () => {
           return authService.login(email, password);
         })
         .then((loginRes) => {
-          const user = { name: name, email: email };
+          const data = loginRes.data || loginRes;
+          const userObj = data.user || {};
+          const user = {
+            ...userObj,
+            name: name,
+            full_name: name,
+            email: email,
+            monthly_income: userObj.monthly_income !== undefined ? userObj.monthly_income : '0'
+          };
           localStorage.setItem('activeUser', JSON.stringify(user));
           localStorage.setItem(`onboarding_completed_${email}`, 'false');
           localStorage.setItem('last_activity', Date.now().toString());
@@ -135,7 +143,13 @@ const AuthPage = () => {
           const nameFromEmail = emailPrefix.charAt(0).toUpperCase() + emailPrefix.slice(1);
           const finalName = fullName || nameFromEmail;
 
-          const user = { name: finalName, email: email };
+          const user = {
+            ...userObj,
+            name: finalName,
+            full_name: fullName || finalName,
+            email: userObj.email || email,
+            monthly_income: userObj.monthly_income !== undefined ? userObj.monthly_income : '0'
+          };
           localStorage.setItem('activeUser', JSON.stringify(user));
           localStorage.setItem('last_activity', Date.now().toString());
           setLoading(false);
