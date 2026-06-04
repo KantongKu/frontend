@@ -44,7 +44,7 @@ Sebelum menjalankan aplikasi, buat file `.env` di masing-masing direktori proyek
 ### 1. Frontend Environment (`frontend/.env`)
 Buat berkas `.env` di dalam direktori `frontend`:
 ```env
-VITE_GEMINI_API_KEY=AIzaSyAcm6svX0Kncieleuaj6CjtDp7WdfrqZEQ
+VITE_GEMINI_API_KEY="your_gemini_api_key_here"
 ```
 *(Catatan: Gantilah nilai di atas dengan API Key Gemini Anda yang valid.)*
 
@@ -52,16 +52,16 @@ VITE_GEMINI_API_KEY=AIzaSyAcm6svX0Kncieleuaj6CjtDp7WdfrqZEQ
 Buat berkas `.env` di dalam direktori `be-kantongku`:
 ```env
 # Koneksi Database PostgreSQL (Neon / Local)
-DATABASE_URL="postgresql://neondb_owner:npg_A0KX4VqcBaeN@ep-patient-rain-aom884pi-pooler.c-2.ap-southeast-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
+DATABASE_URL="postgresql://your_db_user:your_db_password@your_db_host:5432/your_db_name?sslmode=require"
 
 # Port Server & Kredensial JWT
 PORT=4000
 JWT_SECRET="your_jwt_secret_here"
 
 # Kredensial Cloudinary (Penyimpanan Gambar Struk Bukti Transaksi)
-CLOUDINARY_CLOUD_NAME="diuahevvn"
-CLOUDINARY_API_KEY="564311498325433"
-CLOUDINARY_API_SECRET="wk_wSaszGOAqXh0tYg9EQgR0qIk"
+CLOUDINARY_CLOUD_NAME="your_cloudinary_cloud_name"
+CLOUDINARY_API_KEY="your_cloudinary_api_key"
+CLOUDINARY_API_SECRET="your_cloudinary_api_secret"
 
 # API OCR Space (Hugging Face)
 AI_PREDICT_URL="https://suherlan-kantongku.hf.space/predict"
