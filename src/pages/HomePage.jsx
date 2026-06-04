@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Bell, Plus, Send, ShoppingBag, Plane, PiggyBank, Utensils, Banknote, ShoppingCart, Home, Wallet, BarChart2, User, Heart, LogOut, Edit, Upload, Camera, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Bell, Plus, Send, ShoppingBag, Plane, PiggyBank, Utensils, Banknote, ShoppingCart, Home, Wallet, BarChart2, User, Heart, LogOut, Edit, Upload, Camera, ChevronLeft, ChevronRight, Sparkles } from 'lucide-react';
 import './HomePage.css';
 import './LandingPage.css'; // For background styles
 import MobileScannerOverlay from '../components/Scanner/MobileScannerOverlay';
@@ -13,6 +13,7 @@ import OcrArchiveView from '../components/Dashboard/OcrArchiveView';
 import NotificationView from '../components/Dashboard/NotificationView';
 import TransactionGalleryView from '../components/Dashboard/TransactionGalleryView';
 import AddTransactionOverlay from '../components/Dashboard/AddTransactionOverlay';
+import QuickTextEntryOverlay from '../components/Dashboard/QuickTextEntryOverlay';
 import ExpenseCategorization from '../components/Categorization/ExpenseCategorization';
 import { useNavigate } from 'react-router-dom';
 import { newsItems } from '../data/newsData';
@@ -37,6 +38,7 @@ const HomePage = () => {
   const [showScanner, setShowScanner] = useState(false);
   const [showCreatePocket, setShowCreatePocket] = useState(false);
   const [showAddTransaction, setShowAddTransaction] = useState(null);
+  const [showQuickText, setShowQuickText] = useState(false);
   const [showFabMenu, setShowFabMenu] = useState(false);
   const [pockets, setPockets] = useState([]);
   const [activities, setActivities] = useState([]);
@@ -382,6 +384,31 @@ const HomePage = () => {
     });
   };
 
+  const handleAddMultipleTransactions = async (transactions) => {
+    try {
+      setIsLoading(true);
+      for (const tx of transactions) {
+        await transactionService.create({
+          wallet_id: tx.wallet_id,
+          amount: Number(tx.amount),
+          type: tx.type || 'expense',
+          description: tx.description,
+          transaction_date: new Date().toISOString().split('T')[0],
+          is_ocr: false
+        });
+      }
+      fetchDashboardData();
+      setShowQuickText(false);
+      setToastMessage(`Berhasil mencatat ${transactions.length} transaksi`);
+      setTimeout(() => setToastMessage(null), 3000);
+    } catch (err) {
+      console.error("Gagal menambahkan transaksi AI:", err);
+      alert("Gagal menyimpan beberapa transaksi di server.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <div className="mobile-dashboard landing-page">
       {isLoading && (
@@ -722,6 +749,10 @@ const HomePage = () => {
                       <Upload size={18} />
                       <span>Unggah</span>
                     </button>
+                    <button className="fab-menu-item" onClick={() => { setShowFabMenu(false); setShowQuickText(true); }}>
+                      <Sparkles size={18} />
+                      <span>Teks Cepat</span>
+                    </button>
                   </div>
                 </>
               )}
@@ -756,6 +787,13 @@ const HomePage = () => {
           pockets={pockets}
           onClose={() => setShowAddTransaction(null)}
           onSubmit={handleAddTransaction}
+        />
+      )}
+      {showQuickText && (
+        <QuickTextEntryOverlay 
+          pockets={pockets}
+          onClose={() => setShowQuickText(false)}
+          onSubmit={handleAddMultipleTransactions}
         />
       )}
       {toastMessage && (
