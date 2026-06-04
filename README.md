@@ -1,124 +1,138 @@
-# 💼 KantongKu - Smart Expense Tracker
+# 💼 KantongKu - Smart Expense Tracker & AI Budgeting
 
-**KantongKu** adalah aplikasi web pengelolaan keuangan pribadi yang dirancang khusus untuk membantu Anda mengelola pengeluaran dengan lebih efisien. Dengan fitur pemindai struk berbasis OCR, kategorisasi otomatis, dan dashboard interaktif, KantongKu membuat manajemen keuangan menjadi mudah dan menyenangkan.
+**KantongKu** adalah aplikasi web pengelolaan keuangan pribadi yang dirancang khusus untuk membantu Anda mengelola pengeluaran dan merencanakan keuangan bulanan dengan lebih efisien. Dilengkapi dengan asisten finansial cerdas berbasis AI Gemini, pemindai struk belanja (OCR) terpadu di sisi frontend, serta dashboard analisis kesehatan keuangan real-time.
+
+---
 
 ## ✨ Fitur Utama
 
-### 📸 Smart Receipt Scanner
-- Upload atau ambil foto struk belanja
-- Ekstraksi otomatis informasi penting (nama toko, tanggal, total harga)
-- Sinkronisasi dengan sistem pengelolaan pengeluaran
+### 📸 Smart Receipt Scanner (OCR)
+- Memindai dan mengekstrak informasi penting dari struk belanja secara otomatis (nama toko/merchant, tanggal, nominal belanja).
+- **Akurasi & Kecepatan**: Menghubungi API OCR Hugging Face secara langsung dari frontend dengan batas waktu (timeout) 20 detik.
+- **AI Fallback & Anti-Crash**: Jika server OCR lambat atau down, sistem otomatis menggunakan multimodal AI (Gemini 2.5 Flash) untuk menganalisis gambar. Jika kuota API penuh, aplikasi secara cerdas beralih ke form tinjauan manual agar aplikasi tidak crash.
 
-### 🏷️ Automated Expense Categorization
-- Kategorisasi otomatis pengeluaran berdasarkan deskripsi
-- 7 kategori pengeluaran: Makanan & Minuman, Transportasi, Hiburan, Utilitas, Kesehatan, Pendidikan, Lainnya
-- Interface yang user-friendly untuk mengelola kategori
+### 🤖 AI Pocket Recommendations
+- Menyusun alokasi anggaran bulanan secara otomatis berdasarkan status/pekerjaan Anda (misalnya: anggaran khusus kos untuk mahasiswa, atau anggaran bensin untuk ojek online).
+- Memberikan saran target limit bulanan yang rasional untuk setiap kantong yang baru dibuat.
 
-### 📊 Interactive Financial Dashboard
-- Visualisasi pengeluaran dengan grafik yang menarik
-- Tracking budget real-time per kategori
-- Tren pengeluaran mingguan dan analitik mendalam
-- Indikator status budget (normal, warning, critical)
+### 📊 Interactive Financial Health Dashboard
+- Visualisasi persentase pengeluaran terhadap total gaji bulanan.
+- Indikator kesehatan keuangan (*Financial Health Score*) dinamis yang menyesuaikan dengan rasio pengeluaran.
+- Pengelompokan dana melalui **Budget Pockets** (Kantong Anggaran) secara dinamis.
 
-## 🚀 Getting Started
+---
 
-### Prerequisites
-- Node.js (v14 atau lebih tinggi)
-- npm atau yarn
+## 🔌 Tautan Model Machine Learning (ML) & AI
 
-### Installation
+Aplikasi ini memanfaatkan model Machine Learning (ML) dan Artificial Intelligence (AI) berikut untuk memproses data:
 
-1. **Clone repository** (jika menggunakan Git)
-```bash
-git clone <repository-url>
-cd frontend
+1. **Hugging Face OCR Space (Model Deteksi Teks Struk)**
+   - **Tautan Layanan**: [suherlan-kantongku on Hugging Face Spaces](https://huggingface.co/spaces/suherlan/kantongku)
+   - **Endpoint Prediksi**: `https://suherlan-kantongku.hf.space/predict`
+   - **Fungsi**: Menerima file gambar struk belanja dan mengurai nama merchant, total harga, tanggal, serta kategori transaksi.
+
+2. **Google Gemini 2.5 Flash Model**
+   - **Dokumentasi Model**: [Gemini 2.5 Flash API Docs](https://ai.google.dev/gemini-api/docs/models/gemini)
+   - **Fungsi**: Digunakan sebagai fallback multimodal OCR (menganalisis gambar struk belanja dalam format Base64 secara langsung di sisi client) serta untuk memberikan rekomendasi pembagian kantong keuangan cerdas.
+
+---
+
+## ⚙️ Petunjuk Setup Environment
+
+Sebelum menjalankan aplikasi, buat file `.env` di masing-masing direktori proyek.
+
+### 1. Frontend Environment (`frontend/.env`)
+Buat berkas `.env` di dalam direktori `frontend`:
+```env
+VITE_GEMINI_API_KEY=AIzaSyAcm6svX0Kncieleuaj6CjtDp7WdfrqZEQ
+```
+*(Catatan: Gantilah nilai di atas dengan API Key Gemini Anda yang valid.)*
+
+### 2. Backend Environment (`be-kantongku/.env`)
+Buat berkas `.env` di dalam direktori `be-kantongku`:
+```env
+# Koneksi Database PostgreSQL (Neon / Local)
+DATABASE_URL="postgresql://neondb_owner:npg_A0KX4VqcBaeN@ep-patient-rain-aom884pi-pooler.c-2.ap-southeast-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
+
+# Port Server & Kredensial JWT
+PORT=4000
+JWT_SECRET="your_jwt_secret_here"
+
+# Kredensial Cloudinary (Penyimpanan Gambar Struk Bukti Transaksi)
+CLOUDINARY_CLOUD_NAME="diuahevvn"
+CLOUDINARY_API_KEY="564311498325433"
+CLOUDINARY_API_SECRET="wk_wSaszGOAqXh0tYg9EQgR0qIk"
+
+# API OCR Space (Hugging Face)
+AI_PREDICT_URL="https://suherlan-kantongku.hf.space/predict"
 ```
 
-2. **Install dependencies**
-```bash
-npm install --legacy-peer-deps
-```
+---
 
-3. **Setup environment variables**
-Buat file `.env` di root project:
-```
-VITE_API_URL=http://localhost:5000/api
-```
+## 🚀 Cara Menjalankan Aplikasi
 
-4. **Run development server**
-```bash
-npm run dev
-```
+Ikuti instruksi berikut untuk menjalankan backend dan frontend secara lokal.
 
-Server akan berjalan di `http://localhost:5173`
+### Langkah 1: Jalankan Backend (API Server)
+1. Buka terminal baru dan masuk ke direktori backend:
+   ```bash
+   cd be-kantongku
+   ```
+2. Instal semua dependensi:
+   ```bash
+   npm install
+   ```
+3. Lakukan migrasi database dan generate Prisma client:
+   ```bash
+   npx prisma migrate dev
+   npx prisma generate
+   ```
+4. Jalankan server dalam mode development:
+   ```bash
+   npm run dev
+   ```
+   *Server backend akan berjalan di `http://localhost:4000`.*
 
-## 📁 Project Structure
+### Langkah 2: Jalankan Frontend (React App)
+1. Buka terminal baru dan masuk ke direktori frontend:
+   ```bash
+   cd frontend
+   ```
+2. Instal semua dependensi:
+   ```bash
+   npm install --legacy-peer-deps
+   ```
+3. Jalankan server development frontend:
+   ```bash
+   npm run dev
+   ```
+   *Aplikasi frontend akan berjalan di `http://localhost:5173`.*
+
+---
+
+## 📁 Struktur Folder Proyek (Frontend)
 
 ```
 src/
 ├── components/
-│   ├── Dashboard/          # Dashboard overview dan visualisasi
-│   ├── Scanner/            # Receipt scanner interface
-│   ├── Categorization/     # Expense categorization view
-│   └── Layout/             # Header dan navigation
+│   ├── Dashboard/          # Tinjauan anggaran, list kantong & review overlay
+│   ├── Scanner/            # Mobile scanner view lama (depresiasi)
+│   ├── Categorization/     # Interface kategorisasi NLP
+│   └── Layout/             # Navigasi & layout global
 ├── context/
-│   └── ExpenseContext.jsx  # Global state management
+│   └── ExpenseContext.jsx  # State management transaksi & kantong
 ├── pages/
-│   ├── HomePage.jsx        # Main dashboard page
-│   ├── ScannerPage.jsx     # Scanner page
-│   └── CategorizationPage.jsx # Categorization page
+│   ├── HomePage.jsx        # Halaman dashboard utama & integrasi OCR
+│   ├── ScannerPage.jsx     # Halaman pemindai
+│   └── OnboardingPage.jsx  # Alur onboarding baru berbasis status/gaji & AI
 ├── services/
-│   └── api.js              # API service calls
+│   ├── api.js              # Klien HTTP Axios, format mata uang & backend calls
+│   └── ai.js               # Parser AI Gemini, pencocokan kantong lokal & multimodal OCR
 ├── styles/
-│   └── globals.css         # Global styling
-├── App.jsx                 # Main app component
-├── main.jsx                # Entry point
-└── index.css               # Root styles
+│   └── globals.css         # Reset style global & tema glassmorphism
+├── App.jsx                 # Router utama aplikasi
+└── main.jsx                # Entry point React
 ```
-
-## 📚 Available Scripts
-
-### Development
-```bash
-npm run dev
-```
-Jalankan aplikasi dalam mode development dengan hot reload.
-
-### Build for Production
-```bash
-npm run build
-```
-Build aplikasi untuk production. Output akan tersimpan di folder `dist/`.
-
-### Preview Production Build
-```bash
-npm run preview
-```
-Preview production build secara lokal.
-
-### Linting
-```bash
-npm run lint
-```
-Check code quality dengan ESLint.
-
-## 🔌 API Integration
-
-Aplikasi ini siap untuk diintegrasikan dengan backend API. Update file `src/services/api.js` dengan URL backend Anda.
-
-## 🛠️ Tech Stack
-
-- **React 19** - UI library
-- **Vite** - Build tool
-- **React Router** - Navigation
-- **Recharts** - Data visualization
-- **Lucide React** - Icons
-- **Axios** - HTTP client
-
-## 📱 Responsive Design
-
-Aplikasi ini sepenuhnya responsive untuk Desktop, Tablet, dan Mobile.
 
 ---
-
 **Made with ❤️ by KantongKu Team**
