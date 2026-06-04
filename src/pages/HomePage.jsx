@@ -4,6 +4,7 @@ import './HomePage.css';
 import './LandingPage.css'; // For background styles
 import MobileScannerOverlay from '../components/Scanner/MobileScannerOverlay';
 import CreatePocketOverlay from '../components/Dashboard/CreatePocketOverlay';
+import EditWalletOverlay from '../components/Dashboard/EditWalletOverlay';
 import PocketsList from '../components/Dashboard/PocketsList';
 import PocketDetail from '../components/Dashboard/PocketDetail';
 import AnalyticsView from '../components/Dashboard/AnalyticsView';
@@ -34,8 +35,10 @@ const HomePage = () => {
   const navigate = useNavigate();
   const [currentView, setCurrentView] = useState('dashboard'); // 'dashboard', 'pockets', 'pocket-detail'
   const [selectedPocket, setSelectedPocket] = useState(null);
+  const [selectedEditPocket, setSelectedEditPocket] = useState(null);
   const [showScanner, setShowScanner] = useState(false);
   const [showCreatePocket, setShowCreatePocket] = useState(false);
+  const [showEditPocket, setShowEditPocket] = useState(false);
   const [showAddTransaction, setShowAddTransaction] = useState(null);
   const [showFabMenu, setShowFabMenu] = useState(false);
   const [pockets, setPockets] = useState([]);
@@ -373,6 +376,19 @@ const HomePage = () => {
     });
   };
 
+  const handleEditPocket = (pocket) => {
+    setSelectedEditPocket(pocket);
+    setShowEditPocket(true);
+  };
+
+  const handleEditPocketSave = () => {
+    fetchDashboardData();
+    setShowEditPocket(false);
+    setSelectedEditPocket(null);
+    setToastMessage('Kantong berhasil diperbarui!');
+    setTimeout(() => setToastMessage(null), 3000);
+  };
+
   return (
     <div className="mobile-dashboard landing-page">
       {isLoading && (
@@ -604,6 +620,8 @@ const HomePage = () => {
               setCurrentView('pocket-detail');
             }}
             onCreatePocket={() => setShowCreatePocket(true)}
+            onEditPocket={handleEditPocket}
+            onDeletePocket={handleEditPocket}
           />
         )}
 
@@ -734,6 +752,16 @@ const HomePage = () => {
         <CreatePocketOverlay 
           onClose={() => setShowCreatePocket(false)} 
           onAddDummyPocket={handleAddDummyPocket}
+        />
+      )}
+      {showEditPocket && selectedEditPocket && (
+        <EditWalletOverlay
+          wallet={selectedEditPocket}
+          onClose={() => {
+            setShowEditPocket(false);
+            setSelectedEditPocket(null);
+          }}
+          onSave={handleEditPocketSave}
         />
       )}
       {showAddTransaction && (

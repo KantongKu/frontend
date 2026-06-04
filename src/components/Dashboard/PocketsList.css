@@ -58,6 +58,11 @@
   filter: brightness(1.1);
 }
 
+.pl-list-item:hover .pl-list-actions {
+  opacity: 1;
+  visibility: visible;
+}
+
 .pl-list-icon {
   width: 48px;
   height: 48px;
@@ -128,4 +133,52 @@
   align-items: center;
   justify-content: center;
   color: black;
+}
+
+.pl-list-actions {
+  display: flex;
+  gap: 8px;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.2s, visibility 0.2s;
+}
+
+.pl-action-btn {
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  color: white;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+
+.pl-action-btn:hover {
+  background: rgba(255, 255, 255, 0.4);
+  transform: scale(1.1);
+}
+
+.pl-action-btn.edit-btn {
+  background: rgba(52, 152, 219, 0.3);
+  border: 1px solid rgba(52, 152, 219, 0.5);
+}
+
+.pl-action-btn.edit-btn:hover {
+  background: rgba(52, 152, 219, 0.6);
+  border-color: rgba(52, 152, 219, 0.8);
+}
+
+.pl-action-btn.delete-btn {
+  background: rgba(231, 76, 60, 0.3);
+  border: 1px solid rgba(231, 76, 60, 0.5);
+}
+
+.pl-action-btn.delete-btn:hover {
+  background: rgba(231, 76, 60, 0.6);
+  border-color: rgba(231, 76, 60, 0.8);
 }

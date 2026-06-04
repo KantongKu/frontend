@@ -1,8 +1,22 @@
 import React from 'react';
-import { Plus, ChevronLeft } from 'lucide-react';
+import { Plus, ChevronLeft, Edit2, Trash2 } from 'lucide-react';
 import './PocketsList.css';
 
-const PocketsList = ({ pockets, onBack, onPocketClick, onCreatePocket }) => {
+const PocketsList = ({ pockets, onBack, onPocketClick, onCreatePocket, onEditPocket, onDeletePocket }) => {
+  const handleEditClick = (e, pocket) => {
+    e.stopPropagation();
+    if (onEditPocket) {
+      onEditPocket(pocket);
+    }
+  };
+
+  const handleDeleteClick = (e, pocket) => {
+    e.stopPropagation();
+    if (onDeletePocket) {
+      onDeletePocket(pocket);
+    }
+  };
+
   return (
     <div className="pockets-list-view">
       <div className="pl-header">
@@ -28,6 +42,22 @@ const PocketsList = ({ pockets, onBack, onPocketClick, onCreatePocket }) => {
                 <div className="progress-bar-bg">
                   <div className="progress-bar-fill" style={{ width: `${pocket.progress}%` }}></div>
                 </div>
+              </div>
+              <div className="pl-list-actions" onClick={(e) => e.stopPropagation()}>
+                <button 
+                  className="pl-action-btn edit-btn" 
+                  onClick={(e) => handleEditClick(e, pocket)}
+                  title="Edit kantong"
+                >
+                  <Edit2 size={18} />
+                </button>
+                <button 
+                  className="pl-action-btn delete-btn" 
+                  onClick={(e) => handleDeleteClick(e, pocket)}
+                  title="Hapus kantong"
+                >
+                  <Trash2 size={18} />
+                </button>
               </div>
             </div>
           ))}

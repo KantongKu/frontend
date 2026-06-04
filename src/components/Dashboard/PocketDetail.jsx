@@ -1,13 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import { ChevronLeft, MoreVertical, Plus, Utensils, ShoppingCart, ArrowDownCircle, ArrowUpCircle, Banknote, X, Image as ImageIcon } from 'lucide-react';
+import { ChevronLeft, MoreVertical, Plus, Utensils, ShoppingCart, ArrowDownCircle, ArrowUpCircle, Banknote, X, Image as ImageIcon, Edit2, Trash2 } from 'lucide-react';
 import AddTransactionOverlay from './AddTransactionOverlay';
+import EditWalletOverlay from './EditWalletOverlay';
+import EditTransactionOverlay from './EditTransactionOverlay';
 import { transactionService } from '../../services/api';
 import './PocketDetail.css';
 
 const PocketDetail = ({ pocket, onBack, onRefresh }) => {
   const [transactions, setTransactions] = useState([]);
   const [showAddOverlay, setShowAddOverlay] = useState(false);
+  const [showEditWalletOverlay, setShowEditWalletOverlay] = useState(false);
+  const [showEditTransactionOverlay, setShowEditTransactionOverlay] = useState(false);
+  const [selectedTransaction, setSelectedTransaction] = useState(null);
   const [selectedReceiptUrl, setSelectedReceiptUrl] = useState(null);
+  const [showMenu, setShowMenu] = useState(false);
 
   useEffect(() => {
     if (pocket && pocket.id) {
@@ -73,6 +79,37 @@ const PocketDetail = ({ pocket, onBack, onRefresh }) => {
     });
   };
 
+  const handleEditTransaction = (transaction) => {
+    setSelectedTransaction(transaction);
+    setShowEditTransactionOverlay(true);
+  };
+
+  const handleDeleteTransaction = (transaction) => {
+    if (transaction.id.startsWith('virtual-')) {
+      alert('Tidak dapat menghapus saldo awal');
+      return;
+    }
+    // Dialog confirmation will be handled in EditTransactionOverlay
+    setSelectedTransaction(transaction);
+    setShowEditTransactionOverlay(true);
+  };
+
+  const handleEditWalletSave = () => {
+    // Reload wallet data and transactions
+    if (onRefresh) onRefresh();
+    setShowEditWalletOverlay(false);
+  };
+
+  const handleEditTransactionSave = () => {
+    // Reload transactions
+    transactionService.getAll(pocket.id)
+      .then(txs => {
+        setTransactions(txs);
+      });
+    if (onRefresh) onRefresh();
+    setShowEditTransactionOverlay(false);
+  };
+
   return (
     <div className="pocket-detail-view">
       <div className="pd-header">
@@ -80,9 +117,38 @@ const PocketDetail = ({ pocket, onBack, onRefresh }) => {
           <ChevronLeft size={24} />
         </button>
         <h2>Detail Kantong</h2>
-        <button className="pd-menu-btn">
-          <MoreVertical size={24} />
-        </button>
+        <div className="pd-menu-container">
+          <button 
+            className="pd-menu-btn"
+            onClick={() => setShowMenu(!showMenu)}
+          >
+            <MoreVertical size={24} />
+          </button>
+          {showMenu && (
+            <div className="pd-menu-dropdown">
+              <button 
+                className="menu-item edit"
+                onClick={() => {
+                  setShowEditWalletOverlay(true);
+                  setShowMenu(false);
+                }}
+              >
+                <Edit2 size={18} />
+                <span>Edit Kantong</span>
+              </button>
+              <button 
+                className="menu-item delete"
+                onClick={() => {
+                  setShowEditWalletOverlay(true);
+                  setShowMenu(false);
+                }}
+              >
+                <Trash2 size={18} />
+                <span>Hapus Kantong</span>
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="pd-content">
@@ -134,16 +200,36 @@ const PocketDetail = ({ pocket, onBack, onRefresh }) => {
                     </h4>
                   </div>
                 </div>
-                {/* Receipt Image Indicator */}
-                {activity.image_url && (
-                  <button 
-                    className="receipt-indicator"
-                    onClick={() => setSelectedReceiptUrl(activity.image_url)}
-                    title="Lihat bukti transaksi"
-                  >
-                    <ImageIcon size={16} />
-                  </button>
-                )}
+                {/* Receipt Image Indicator & Action Buttons */}
+                <div className="activity-actions">
+                  {activity.image_url && (
+                    <button 
+                      className="activity-action-btn receipt-btn"
+                      onClick={() => setSelectedReceiptUrl(activity.image_url)}
+                      title="Lihat bukti transaksi"
+                    >
+                      <ImageIcon size={16} />
+                    </button>
+                  )}
+                  {activity.id && String(activity.id).startsWith('virtual-') === false && (
+                    <>
+                      <button 
+                        className="activity-action-btn edit-btn"
+                        onClick={() => handleEditTransaction(activity)}
+                        title="Edit transaksi"
+                      >
+                        <Edit2 size={16} />
+                      </button>
+                      <button 
+                        className="activity-action-btn delete-btn"
+                        onClick={() => handleDeleteTransaction(activity)}
+                        title="Hapus transaksi"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </>
+                  )}
+                </div>
               </div>
             ))}
           </div>
@@ -168,6 +254,26 @@ const PocketDetail = ({ pocket, onBack, onRefresh }) => {
           pockets={[pocket]}
           onClose={() => setShowAddOverlay(false)}
           onSubmit={handleAddTransaction}
+        />
+      )}
+
+      {showEditWalletOverlay && (
+        <EditWalletOverlay
+          wallet={pocket}
+          onClose={() => setShowEditWalletOverlay(false)}
+          onSave={handleEditWalletSave}
+        />
+      )}
+
+      {showEditTransactionOverlay && selectedTransaction && (
+        <EditTransactionOverlay
+          transaction={selectedTransaction}
+          walletId={pocket.id}
+          onClose={() => {
+            setShowEditTransactionOverlay(false);
+            setSelectedTransaction(null);
+          }}
+          onSave={handleEditTransactionSave}
         />
       )}
     </div>
