@@ -17,7 +17,8 @@ import QuickTextEntryOverlay from '../components/Dashboard/QuickTextEntryOverlay
 import ExpenseCategorization from '../components/Categorization/ExpenseCategorization';
 import { useNavigate } from 'react-router-dom';
 import { newsItems } from '../data/newsData';
-import { walletService, transactionService, formatRupiah } from '../services/api';
+import { scannerService, walletService, transactionService, formatRupiah } from '../services/api';
+import { matchPocketForDescription, extractReceiptDataWithGemini } from '../services/ai';
 
 const dummyPockets = [
   { id: 1, title: 'Daily Needs', amount: 'Rp 8.200.000', progress: 70, colorClass: 'pocket-blue', Icon: ShoppingBag },
@@ -39,6 +40,8 @@ const HomePage = () => {
   const [showCreatePocket, setShowCreatePocket] = useState(false);
   const [showAddTransaction, setShowAddTransaction] = useState(null);
   const [showQuickText, setShowQuickText] = useState(false);
+  const [ocrTransactions, setOcrTransactions] = useState(null);
+  const [isOcrLoading, setIsOcrLoading] = useState(false);
   const [showFabMenu, setShowFabMenu] = useState(false);
   const [pockets, setPockets] = useState([]);
   const [activities, setActivities] = useState([]);
@@ -409,6 +412,92 @@ const HomePage = () => {
     }
   };
 
+  const handleOcrFileChange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    setIsOcrLoading(true);
+    
+    // Setup AbortController for a 20-second timeout on HF Space
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => {
+      console.log('Hugging Face OCR request timed out after 20s. Aborting...');
+      controller.abort();
+    }, 20000);
+
+    try {
+      console.log('Sending file to Hugging Face OCR:', file.name, 'size:', file.size);
+      const data = await scannerService.extractData(file, controller.signal);
+      clearTimeout(timeoutId);
+      console.log('Hugging Face OCR result:', data);
+
+      if (data && data.total !== undefined) {
+        const description = data.merchant || 'Transaksi Struk';
+        const amount = Number(data.total || 0);
+        const matchedWalletId = matchPocketForDescription(description, pockets);
+
+        const parsedTx = [{
+          description: description,
+          amount: amount,
+          type: 'expense',
+          wallet_id: matchedWalletId
+        }];
+
+        setOcrTransactions(parsedTx);
+        setShowQuickText(true);
+      } else {
+        alert('Gagal mendeteksi rincian dari struk. Coba file lain.');
+      }
+    } catch (err) {
+      clearTimeout(timeoutId);
+      console.warn('Hugging Face OCR failed or timed out. Falling back to Gemini...', err);
+      
+      try {
+        console.log('Calling Gemini Multimodal OCR fallback for file:', file.name);
+        const data = await extractReceiptDataWithGemini(file, pockets);
+        console.log('Gemini OCR fallback result:', data);
+        
+        if (data && data.total !== undefined) {
+          const description = data.merchant || 'Transaksi Struk';
+          const amount = Number(data.total || 0);
+          const matchedWalletId = data.wallet_id || matchPocketForDescription(description, pockets);
+          
+          const parsedTx = [{
+            description: description,
+            amount: amount,
+            type: 'expense',
+            wallet_id: matchedWalletId
+          }];
+          
+          setOcrTransactions(parsedTx);
+          setShowQuickText(true);
+        } else {
+          alert('Gagal mendeteksi rincian dari struk melalui Gemini.');
+        }
+      } catch (geminiErr) {
+        console.warn('Gemini OCR fallback also failed, using local manual fill fallback:', geminiErr);
+        
+        const description = file.name ? file.name.split('.')[0] : 'Transaksi Struk';
+        const matchedWalletId = pockets.length > 0 ? pockets[0].id : null;
+        
+        const parsedTx = [{
+          description: description,
+          amount: 0,
+          type: 'expense',
+          wallet_id: matchedWalletId
+        }];
+        
+        setOcrTransactions(parsedTx);
+        setShowQuickText(true);
+        setToastMessage('Limit AI tercapai. Silakan isi detail secara manual.');
+        setTimeout(() => setToastMessage(null), 4000);
+      }
+    } finally {
+      setIsOcrLoading(false);
+      e.target.value = '';
+    }
+  };
+
   return (
     <div className="mobile-dashboard landing-page">
       {isLoading && (
@@ -745,9 +834,9 @@ const HomePage = () => {
                       <Edit size={18} />
                       <span>Manual</span>
                     </button>
-                    <button className="fab-menu-item" onClick={() => { setShowFabMenu(false); setShowScanner(true); }}>
-                      <Upload size={18} />
-                      <span>Unggah</span>
+                    <button className="fab-menu-item" onClick={() => { setShowFabMenu(false); document.getElementById('ocr-file-input')?.click(); }}>
+                      <Camera size={18} />
+                      <span>Scan Struk</span>
                     </button>
                     <button className="fab-menu-item" onClick={() => { setShowFabMenu(false); setShowQuickText(true); }}>
                       <Sparkles size={18} />
@@ -774,6 +863,23 @@ const HomePage = () => {
         </div>
       )}
 
+      <input 
+        type="file" 
+        id="ocr-file-input" 
+        style={{ display: 'none' }} 
+        accept="image/*" 
+        onChange={handleOcrFileChange} 
+      />
+
+      {isOcrLoading && (
+        <div className="dashboard-loading-overlay">
+          <div className="loading-spinner-container">
+            <div className="loading-spinner-circle"></div>
+            <p className="loading-spinner-text">Menganalisis struk dengan AI...</p>
+          </div>
+        </div>
+      )}
+
       {showScanner && <MobileScannerOverlay onClose={() => setShowScanner(false)} />}
       {showCreatePocket && (
         <CreatePocketOverlay 
@@ -792,7 +898,11 @@ const HomePage = () => {
       {showQuickText && (
         <QuickTextEntryOverlay 
           pockets={pockets}
-          onClose={() => setShowQuickText(false)}
+          initialTransactions={ocrTransactions}
+          onClose={() => {
+            setShowQuickText(false);
+            setOcrTransactions(null);
+          }}
           onSubmit={handleAddMultipleTransactions}
         />
       )}

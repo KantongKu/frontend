@@ -224,11 +224,6 @@ export const userService = {
           }
         });
         requestData = formData;
-        config = {
-          headers: {
-            'Content-Type': 'multipart/form-data'
-          }
-        };
       }
 
       // Try to update via API first - use /auth/profile endpoint
@@ -393,11 +388,7 @@ export const transactionService = {
         formData.append('is_ocr', txData.is_ocr !== undefined ? !!txData.is_ocr : false);
         formData.append('image', txData.receiptImage);
         
-        const response = await api.post('/transactions', formData, {
-          headers: {
-            'Content-Type': 'multipart/form-data'
-          }
-        });
+        const response = await api.post('/transactions', formData);
         const resData = response.data.data || response.data;
         return mapTransactionToFrontend(resData);
       } else {
@@ -460,9 +451,7 @@ export const scannerService = {
     formData.append('receipt', file);
     
     try {
-      const response = await api.post('/scanner/upload', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
+      const response = await api.post('/scanner/upload', formData);
       return response.data;
     } catch (error) {
       console.error('Error uploading receipt:', error);
@@ -470,28 +459,43 @@ export const scannerService = {
     }
   },
 
-  extractData: async (imageFile) => {
+  extractData: async (imageFile, signal = null) => {
     const formData = new FormData();
-    formData.append('image', imageFile);
+    formData.append('file', imageFile);
     
     try {
-      console.log('Calling OCR API with file:', imageFile.name || imageFile.size, 'bytes');
-      const response = await api.post('/scanner/extract', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
+      console.log('Calling Hugging Face OCR space directly, size:', imageFile.size, 'bytes');
+      const response = await fetch('https://suherlan-kantongku.hf.space/predict', {
+        method: 'POST',
+        body: formData,
+        signal: signal
       });
       
-      console.log('OCR API raw response:', response);
-      
-      // Validate response status
-      if (!response || !response.data) {
-        throw new Error('Response kosong dari server');
+      if (!response.ok) {
+        throw new Error(`OCR service failed with status ${response.status}`);
       }
       
-      return response.data;
+      const data = await response.json();
+      console.log('Direct OCR raw response:', data);
+      
+      if (!data || typeof data !== 'object') {
+        throw new Error('Format respons tidak valid dari service OCR.');
+      }
+      
+      // Normalize to return total, merchant, date, items
+      return {
+        success: data.success !== undefined ? data.success : true,
+        merchant: data.merchant || 'Toko Struk',
+        total: Number(data.total || 0),
+        amount: Number(data.total || 0),
+        date: data.date || new Date().toISOString().split('T')[0],
+        items: data.item ? [{ name: data.item, qty: 1, price: Number(data.total || 0) }] : [],
+        category: data.category || 'Lainnya',
+        error_message: data.error_message || ''
+      };
     } catch (error) {
-      console.error('Error extracting data:', error);
-      console.error('Error details:', error.response?.data || error.message);
-      throw new Error(error.response?.data?.message || error.message || 'Gagal menghubungi server OCR');
+      console.error('Error in scannerService.extractData:', error);
+      throw new Error(error.message || 'Gagal menghubungi server OCR Hugging Face');
     }
   },
 };

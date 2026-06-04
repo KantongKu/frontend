@@ -241,101 +241,7 @@ export const parseAiTransactions = async (textInput, pocketsList, isMultiple = f
       }
 
       // Match pocket
-      let wallet_id = pockets.length > 0 ? pockets[0].id : null; // default to first pocket
-      let bestMatchScore = 0;
-
-      // 1. Clean token matching (stripping parenthesis and other special characters)
-      for (const pocket of pockets) {
-        const cleanTitle = pocket.title.toLowerCase().replace(/[^a-z0-9\s]/g, ' ');
-        const tokens = cleanTitle.split(/\s+/).filter(t => t.length > 2);
-        
-        let score = 0;
-        tokens.forEach(token => {
-          if (lowerLine.includes(token)) {
-            score += token.length * 2;
-          }
-        });
-        if (score > bestMatchScore) {
-          bestMatchScore = score;
-          wallet_id = pocket.id;
-        }
-      }
-
-      // 2. Fallback smart synonyms/category rules if no direct keyword match
-      if (bestMatchScore === 0 && pockets.length > 0) {
-        const categoryRules = [
-          {
-            keywords: ['makan', 'minum', 'kopi', 'cafe', 'restoran', 'warung', 'food', 'beverage', 'grocery', 'belanja bulanan', 'sayur', 'beras', 'indomaret', 'alfamart', 'nasi', 'bakso', 'mie', 'kenangan', 'starbucks', 'gofood', 'grabfood', 'shopeefood'],
-            pocketKeywords: ['makan', 'kuliner', 'kebutuhan', 'jajan']
-          },
-          {
-            keywords: ['bensin', 'pertalite', 'pertamax', 'servis', 'oli', 'gojek', 'grab', 'gocar', 'uber', 'bus', 'kereta', 'tiket', 'transport', 'parkir', 'tol', 'angkutan', 'ojek'],
-            pocketKeywords: ['transport', 'kendaraan', 'bensin', 'kebutuhan']
-          },
-          {
-            keywords: ['kost', 'kos', 'kontrakan', 'listrik', 'air', 'pdam', 'wifi', 'internet', 'pulsa', 'kuota', 'langganan', 'netflix', 'spotify', 'tagihan', 'token'],
-            pocketKeywords: ['tagihan', 'utilitas', 'kebutuhan', 'kost', 'bulanan']
-          },
-          {
-            keywords: ['tabungan', 'investasi', 'reksa dana', 'saham', 'crypto', 'emas', 'deposito', 'simpanan', 'celengan', 'reksadana', 'bibit'],
-            pocketKeywords: ['tabungan', 'investasi', 'simpan']
-          },
-          {
-            keywords: ['jajan', 'nonton', 'bioskop', 'singing', 'karaoke', 'main', 'game', 'steam', 'topup', 'skin', 'liburan', 'jalan-jalan', 'travel', 'hotel', 'wisata', 'healing', 'belanja baju', 'sepatu'],
-            pocketKeywords: ['jajan', 'hiburan', 'refreshing', 'wisata', 'senang']
-          },
-          {
-            keywords: ['sakit', 'obat', 'dokter', 'klinik', 'apotek', 'rawat', 'sehat', 'darurat', 'musibah', 'kecelakaan', 'emergency', 'asuransi', 'bpjs'],
-            pocketKeywords: ['cadangan', 'darurat', 'kesehatan', 'obat', 'emergency']
-          }
-        ];
-
-        let matchedPocketIndex = -1;
-        let matchedRuleIndex = -1;
-
-        for (let rIdx = 0; rIdx < categoryRules.length; rIdx++) {
-          const rule = categoryRules[rIdx];
-          if (rule.keywords.some(kw => lowerLine.includes(kw))) {
-            matchedRuleIndex = rIdx;
-            break;
-          }
-        }
-
-        if (matchedRuleIndex !== -1) {
-          const targetPocketKeywords = categoryRules[matchedRuleIndex].pocketKeywords;
-          let bestPocketScore = 0;
-          for (let pIdx = 0; pIdx < pockets.length; pIdx++) {
-            const p = pockets[pIdx];
-            const pTitleLower = p.title.toLowerCase();
-            let pScore = 0;
-            targetPocketKeywords.forEach(pKw => {
-              if (pTitleLower.includes(pKw)) {
-                pScore += pKw.length;
-              }
-            });
-            if (pScore > bestPocketScore) {
-              bestPocketScore = pScore;
-              matchedPocketIndex = pIdx;
-            }
-          }
-        }
-
-        if (matchedPocketIndex !== -1) {
-          wallet_id = pockets[matchedPocketIndex].id;
-        } else {
-          // If no categories match, look for a pocket title containing 'kebutuhan' or 'makan'
-          const kebutuhanPocket = pockets.find(p => p.title.toLowerCase().includes('kebutuhan') || p.title.toLowerCase().includes('makan'));
-          if (kebutuhanPocket) {
-            wallet_id = kebutuhanPocket.id;
-          } else {
-            // Find a pocket that is NOT investment/savings
-            const nonInvestPocket = pockets.find(p => !p.title.toLowerCase().includes('investasi') && !p.title.toLowerCase().includes('tabungan'));
-            if (nonInvestPocket) {
-              wallet_id = nonInvestPocket.id;
-            }
-          }
-        }
-      }
+      const wallet_id = matchPocketForDescription(trimmed, pockets);
 
       // Description (remove the numeric amount and any rb/jt suffix, clean up)
       let description = trimmed;
@@ -443,6 +349,192 @@ Kembalikan hasilnya HANYA berupa JSON array of objects tanpa pembungkus markdown
   } catch (error) {
     console.error('Error parsing AI transactions, using local fallback:', error);
     return parseLocalFallback(textInput, pocketsList);
+  }
+};
+
+export const matchPocketForDescription = (description, pockets) => {
+  if (!description || pockets.length === 0) return pockets.length > 0 ? pockets[0].id : null;
+  const lowerLine = description.toLowerCase();
+
+  // 1. Clean token matching (stripping parenthesis and other special characters)
+  let bestMatchScore = 0;
+  let wallet_id = pockets[0].id;
+
+  for (const pocket of pockets) {
+    const cleanTitle = pocket.title.toLowerCase().replace(/[^a-z0-9\s]/g, ' ');
+    const tokens = cleanTitle.split(/\s+/).filter(t => t.length > 2);
+    
+    let score = 0;
+    tokens.forEach(token => {
+      if (lowerLine.includes(token)) {
+        score += token.length * 2;
+      }
+    });
+    if (score > bestMatchScore) {
+      bestMatchScore = score;
+      wallet_id = pocket.id;
+    }
+  }
+
+  // 2. Fallback smart synonyms/category rules if no direct keyword match
+  if (bestMatchScore === 0) {
+    const categoryRules = [
+      {
+        keywords: ['makan', 'minum', 'kopi', 'cafe', 'restoran', 'warung', 'food', 'beverage', 'grocery', 'belanja bulanan', 'sayur', 'beras', 'indomaret', 'alfamart', 'nasi', 'bakso', 'mie', 'kenangan', 'starbucks', 'gofood', 'grabfood', 'shopeefood', 'nasgor', 'martabak', 'sate', 'soto'],
+        pocketKeywords: ['makan', 'kuliner', 'kebutuhan', 'jajan']
+      },
+      {
+        keywords: ['bensin', 'pertalite', 'pertamax', 'servis', 'oli', 'gojek', 'grab', 'gocar', 'uber', 'bus', 'kereta', 'tiket', 'transport', 'parkir', 'tol', 'angkutan', 'ojek'],
+        pocketKeywords: ['transport', 'kendaraan', 'bensin', 'kebutuhan']
+      },
+      {
+        keywords: ['kost', 'kos', 'kontrakan', 'listrik', 'air', 'pdam', 'wifi', 'internet', 'pulsa', 'kuota', 'langganan', 'netflix', 'spotify', 'tagihan', 'token'],
+        pocketKeywords: ['tagihan', 'utilitas', 'kebutuhan', 'kost', 'bulanan']
+      },
+      {
+        keywords: ['tabungan', 'investasi', 'reksa dana', 'saham', 'crypto', 'emas', 'deposito', 'simpanan', 'celengan', 'reksadana', 'bibit'],
+        pocketKeywords: ['tabungan', 'investasi', 'simpan']
+      },
+      {
+        keywords: ['jajan', 'nonton', 'bioskop', 'singing', 'karaoke', 'main', 'game', 'steam', 'topup', 'skin', 'liburan', 'jalan-jalan', 'travel', 'hotel', 'wisata', 'healing', 'belanja baju', 'sepatu'],
+        pocketKeywords: ['jajan', 'hiburan', 'refreshing', 'wisata', 'senang']
+      },
+      {
+        keywords: ['sakit', 'obat', 'dokter', 'klinik', 'apotek', 'rawat', 'sehat', 'darurat', 'musibah', 'kecelakaan', 'emergency', 'asuransi', 'bpjs'],
+        pocketKeywords: ['cadangan', 'darurat', 'kesehatan', 'obat', 'emergency']
+      }
+    ];
+
+    let matchedPocketIndex = -1;
+    let matchedRuleIndex = -1;
+
+    for (let rIdx = 0; rIdx < categoryRules.length; rIdx++) {
+      const rule = categoryRules[rIdx];
+      if (rule.keywords.some(kw => lowerLine.includes(kw))) {
+        matchedRuleIndex = rIdx;
+        break;
+      }
+    }
+
+    if (matchedRuleIndex !== -1) {
+      const targetPocketKeywords = categoryRules[matchedRuleIndex].pocketKeywords;
+      let bestPocketScore = 0;
+      for (let pIdx = 0; pIdx < pockets.length; pIdx++) {
+        const p = pockets[pIdx];
+        const pTitleLower = p.title.toLowerCase();
+        let pScore = 0;
+        targetPocketKeywords.forEach(pKw => {
+          if (pTitleLower.includes(pKw)) {
+            pScore += pKw.length;
+          }
+        });
+        if (pScore > bestPocketScore) {
+          bestPocketScore = pScore;
+          matchedPocketIndex = pIdx;
+        }
+      }
+    }
+
+    if (matchedPocketIndex !== -1) {
+      wallet_id = pockets[matchedPocketIndex].id;
+    } else {
+      const kebutuhanPocket = pockets.find(p => p.title.toLowerCase().includes('kebutuhan') || p.title.toLowerCase().includes('makan'));
+      if (kebutuhanPocket) {
+        wallet_id = kebutuhanPocket.id;
+      } else {
+        const nonInvestPocket = pockets.find(p => !p.title.toLowerCase().includes('investasi') && !p.title.toLowerCase().includes('tabungan'));
+        if (nonInvestPocket) {
+          wallet_id = nonInvestPocket.id;
+        }
+      }
+    }
+  }
+
+  return wallet_id;
+};
+
+export const extractReceiptDataWithGemini = async (file, pocketsList, apiKey = '') => {
+  const activeApiKey = apiKey || import.meta.env.VITE_GEMINI_API_KEY || '';
+  if (!activeApiKey) {
+    throw new Error('Gemini API Key tidak tersedia untuk analisis struk.');
+  }
+
+  // Convert file to base64
+  const fileToBase64 = (f) => new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(f);
+    reader.onload = () => {
+      const base64Str = reader.result.split(',')[1];
+      resolve(base64Str);
+    };
+    reader.onerror = error => reject(error);
+  });
+
+  const base64Data = await fileToBase64(file);
+  const pocketInfo = pocketsList.map(p => `- ID: ${p.id}, Nama: "${p.title}"`).join('\n');
+
+  try {
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${activeApiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [
+            {
+              parts: [
+                {
+                  text: `Anda adalah asisten AI ekstraksi struk belanja untuk aplikasi KantongKu.
+Analisis gambar struk belanja ini dan keluarkan informasi transaksi terstruktur dalam bahasa Indonesia.
+Berikut adalah daftar Kantong (Pockets) yang dimiliki pengguna saat ini:
+${pocketInfo || 'Tidak ada kantong'}
+
+Kembalikan hasil HANYA berupa JSON object dengan format berikut secara presisi (tanpa markdown code blocks seperti \`\`\`json):
+{
+  "merchant": "nama toko/merchant/rumah makan/dll (string)",
+  "total": total_nominal_belanja_angka_bulat (number),
+  "date": "tanggal transaksi format YYYY-MM-DD (string)",
+  "wallet_id": id_kantong_yang_paling_cocok (number atau null)
+}`
+                },
+                {
+                  inlineData: {
+                    mimeType: file.type || 'image/jpeg',
+                    data: base64Data
+                  }
+                }
+              ]
+            }
+          ],
+          generationConfig: {
+            responseMimeType: 'application/json'
+          }
+        })
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error(`Gemini API returned status ${response.status}`);
+    }
+
+    const data = await response.json();
+    const responseText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!responseText) {
+      throw new Error('Response kosong dari Gemini API');
+    }
+
+    const parsed = JSON.parse(responseText.trim());
+    return {
+      success: true,
+      merchant: parsed.merchant || 'Transaksi Struk',
+      total: Number(parsed.total || 0),
+      amount: Number(parsed.total || 0),
+      date: parsed.date || new Date().toISOString().split('T')[0],
+      wallet_id: parsed.wallet_id ? Number(parsed.wallet_id) : (pocketsList.length > 0 ? pocketsList[0].id : null)
+    };
+  } catch (error) {
+    console.error('Error in extractReceiptDataWithGemini:', error);
+    throw error;
   }
 };
 

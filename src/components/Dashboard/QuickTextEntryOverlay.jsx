@@ -3,12 +3,14 @@ import { ArrowLeft, Trash2, Sparkles, Check, Info, ChevronDown } from 'lucide-re
 import { parseAiTransactions } from '../../services/ai';
 import './QuickTextEntryOverlay.css';
 
-const QuickTextEntryOverlay = ({ pockets, onClose, onSubmit }) => {
-  const [step, setStep] = useState(1);
+const QuickTextEntryOverlay = ({ pockets, onClose, onSubmit, initialTransactions }) => {
+  const [step, setStep] = useState(initialTransactions && initialTransactions.length > 0 ? 2 : 1);
   const [textInput, setTextInput] = useState('');
   const [isMultiple, setIsMultiple] = useState(false);
   const [isParsing, setIsParsing] = useState(false);
-  const [parsedTransactions, setParsedTransactions] = useState([]);
+  const [parsedTransactions, setParsedTransactions] = useState(
+    initialTransactions && initialTransactions.length > 0 ? initialTransactions : []
+  );
 
   const handleParse = async () => {
     if (!textInput.trim()) return;
