@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Bell, Plus, Send, ShoppingBag, Plane, PiggyBank, Utensils, Banknote, ShoppingCart, Home, Wallet, BarChart2, User, Heart, LogOut, Edit, Upload, Camera, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Bell, Plus, Send, ShoppingBag, Plane, PiggyBank, Utensils, Banknote, ShoppingCart, Home, Wallet, BarChart2, User, Heart, LogOut, Edit, Upload, Camera, ChevronLeft, ChevronRight, Sparkles } from 'lucide-react';
 import './HomePage.css';
 import './LandingPage.css'; // For background styles
 import MobileScannerOverlay from '../components/Scanner/MobileScannerOverlay';
@@ -13,10 +13,12 @@ import OcrArchiveView from '../components/Dashboard/OcrArchiveView';
 import NotificationView from '../components/Dashboard/NotificationView';
 import TransactionGalleryView from '../components/Dashboard/TransactionGalleryView';
 import AddTransactionOverlay from '../components/Dashboard/AddTransactionOverlay';
+import QuickTextEntryOverlay from '../components/Dashboard/QuickTextEntryOverlay';
 import ExpenseCategorization from '../components/Categorization/ExpenseCategorization';
 import { useNavigate } from 'react-router-dom';
 import { newsItems } from '../data/newsData';
-import { walletService, transactionService } from '../services/api';
+import { scannerService, walletService, transactionService, formatRupiah } from '../services/api';
+import { matchPocketForDescription, extractReceiptDataWithGemini } from '../services/ai';
 
 const dummyPockets = [
   { id: 1, title: 'Daily Needs', amount: 'Rp 8.200.000', progress: 70, colorClass: 'pocket-blue', Icon: ShoppingBag },
@@ -37,6 +39,9 @@ const HomePage = () => {
   const [showScanner, setShowScanner] = useState(false);
   const [showCreatePocket, setShowCreatePocket] = useState(false);
   const [showAddTransaction, setShowAddTransaction] = useState(null);
+  const [showQuickText, setShowQuickText] = useState(false);
+  const [ocrTransactions, setOcrTransactions] = useState(null);
+  const [isOcrLoading, setIsOcrLoading] = useState(false);
   const [showFabMenu, setShowFabMenu] = useState(false);
   const [pockets, setPockets] = useState([]);
   const [activities, setActivities] = useState([]);
@@ -46,6 +51,7 @@ const HomePage = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [profileRefreshTrigger, setProfileRefreshTrigger] = useState(0);
   const [profileAvatar, setProfileAvatar] = useState('https://i.pravatar.cc/150?img=11');
+  const [monthlyIncome, setMonthlyIncome] = useState(5000000);
 
   const fetchDashboardData = useCallback(() => {
     const activeUserJson = localStorage.getItem('activeUser');
@@ -93,7 +99,7 @@ const HomePage = () => {
 
         // Synthesize virtual "Saldo Awal" transactions for pockets that have a balance but no starting transaction
         fetchedPockets.forEach(pocket => {
-          const initialBal = Number(pocket.balance || 0);
+          const initialBal = Number(pocket.budget_limit || pocket.balance || 0);
           const hasStartingTx = fetchedTx.some(tx => 
             Number(tx.wallet_id || tx.walletId) === Number(pocket.id) && 
             tx.title.toLowerCase().includes('saldo awal')
@@ -140,8 +146,11 @@ const HomePage = () => {
             .filter(tx => tx.type === 'expense')
             .reduce((sum, tx) => sum + (tx.amountVal || 0), 0);
             
-          const initialBudget = Number(pocket.balance || 0);
-          const currentBalance = initialBudget + totalIncome - totalExpense;
+          // Use pocket.budget_limit as the initial budget (fallback to pocket.balance if not set)
+          const initialBudget = Number(pocket.budget_limit || pocket.balance || 0);
+          
+          // Use pocket.balance directly as the current balance, as it already represents the correct balance from the server
+          const currentBalance = pocket.balance || 0;
           
           // Progress based on expenses vs initial budget limit
           const progress = initialBudget > 0 
@@ -152,7 +161,7 @@ const HomePage = () => {
             ...pocket,
             initialBudget, // Store initial budget limit
             balance: currentBalance,
-            amount: `Rp ${currentBalance.toLocaleString('id-ID')}`,
+            amount: formatRupiah(currentBalance),
             progress
           };
         });
@@ -197,6 +206,11 @@ const HomePage = () => {
         }
         if (activeUser.avatar_url) {
           setProfileAvatar(activeUser.avatar_url);
+        }
+        if (activeUser.monthly_income !== undefined) {
+          setMonthlyIncome(Number(activeUser.monthly_income));
+        } else if (activeUser.monthlyIncome !== undefined) {
+          setMonthlyIncome(Number(activeUser.monthlyIncome));
         }
       } catch (e) {
         console.error("Gagal memproses data activeUser pada mount:", e);
@@ -250,8 +264,13 @@ const HomePage = () => {
         } else if (activeUser.name) {
           setUserName(activeUser.name);
         }
+        if (activeUser.monthly_income !== undefined) {
+          setMonthlyIncome(Number(activeUser.monthly_income));
+        } else if (activeUser.monthlyIncome !== undefined) {
+          setMonthlyIncome(Number(activeUser.monthlyIncome));
+        }
       } catch (e) {
-        console.error("Error updating profile avatar:", e);
+        console.error("Error updating profile details:", e);
       }
     }
   }, [profileRefreshTrigger]);
@@ -260,27 +279,22 @@ const HomePage = () => {
     return acc + (pocket.balance || 0);
   }, 0);
 
-  // Calculate dynamic financial health based on income and expenses
-  const totalIncome = activities
-    .filter(tx => tx.type === 'income')
-    .reduce((sum, tx) => sum + (tx.amountVal || 0), 0);
-
+  // Calculate dynamic financial health based on monthly income and expenses
   const totalExpense = activities
     .filter(tx => tx.type === 'expense')
     .reduce((sum, tx) => sum + (tx.amountVal || 0), 0);
 
-  // Health score is the percentage of total funds (starting balance + income) that is NOT spent.
-  // If there are no funds and no expenses, it's a clean 100% slate.
-  // If they spent money but have 0 recorded income/funds, health is 0%.
+  // Health score is calculated based on the monthly income.
+  // If the user hasn't set their income or spent anything, it defaults to 100%.
   let healthScore = 100;
-  if (totalIncome > 0) {
-    healthScore = Math.max(0, Math.min(100, Math.round(((totalIncome - totalExpense) / totalIncome) * 100)));
+  if (monthlyIncome > 0) {
+    healthScore = Math.max(0, Math.min(100, Math.round(((monthlyIncome - totalExpense) / monthlyIncome) * 100)));
   } else if (totalExpense > 0) {
     healthScore = 0;
   }
 
   let healthMessage = "Keuangan Anda seimbang. Mulai mencatat pengeluaran Anda!";
-  if (totalIncome > 0 || totalExpense > 0) {
+  if (monthlyIncome > 0 || totalExpense > 0) {
     if (healthScore >= 90) {
       healthMessage = "Luar biasa! Pengeluaran Anda sangat minim dibanding pemasukan.";
     } else if (healthScore >= 75) {
@@ -373,6 +387,117 @@ const HomePage = () => {
     });
   };
 
+  const handleAddMultipleTransactions = async (transactions) => {
+    try {
+      setIsLoading(true);
+      for (const tx of transactions) {
+        await transactionService.create({
+          wallet_id: tx.wallet_id,
+          amount: Number(tx.amount),
+          type: tx.type || 'expense',
+          description: tx.description,
+          transaction_date: new Date().toISOString().split('T')[0],
+          is_ocr: false
+        });
+      }
+      fetchDashboardData();
+      setShowQuickText(false);
+      setToastMessage(`Berhasil mencatat ${transactions.length} transaksi`);
+      setTimeout(() => setToastMessage(null), 3000);
+    } catch (err) {
+      console.error("Gagal menambahkan transaksi AI:", err);
+      alert("Gagal menyimpan beberapa transaksi di server.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleOcrFileChange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    setIsOcrLoading(true);
+    
+    // Setup AbortController for a 20-second timeout on HF Space
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => {
+      console.log('Hugging Face OCR request timed out after 20s. Aborting...');
+      controller.abort();
+    }, 20000);
+
+    try {
+      console.log('Sending file to Hugging Face OCR:', file.name, 'size:', file.size);
+      const data = await scannerService.extractData(file, controller.signal);
+      clearTimeout(timeoutId);
+      console.log('Hugging Face OCR result:', data);
+
+      if (data && data.total !== undefined) {
+        const description = data.merchant || 'Transaksi Struk';
+        const amount = Number(data.total || 0);
+        const matchedWalletId = matchPocketForDescription(description, pockets);
+
+        const parsedTx = [{
+          description: description,
+          amount: amount,
+          type: 'expense',
+          wallet_id: matchedWalletId
+        }];
+
+        setOcrTransactions(parsedTx);
+        setShowQuickText(true);
+      } else {
+        alert('Gagal mendeteksi rincian dari struk. Coba file lain.');
+      }
+    } catch (err) {
+      clearTimeout(timeoutId);
+      console.warn('Hugging Face OCR failed or timed out. Falling back to Gemini...', err);
+      
+      try {
+        console.log('Calling Gemini Multimodal OCR fallback for file:', file.name);
+        const data = await extractReceiptDataWithGemini(file, pockets);
+        console.log('Gemini OCR fallback result:', data);
+        
+        if (data && data.total !== undefined) {
+          const description = data.merchant || 'Transaksi Struk';
+          const amount = Number(data.total || 0);
+          const matchedWalletId = data.wallet_id || matchPocketForDescription(description, pockets);
+          
+          const parsedTx = [{
+            description: description,
+            amount: amount,
+            type: 'expense',
+            wallet_id: matchedWalletId
+          }];
+          
+          setOcrTransactions(parsedTx);
+          setShowQuickText(true);
+        } else {
+          alert('Gagal mendeteksi rincian dari struk melalui Gemini.');
+        }
+      } catch (geminiErr) {
+        console.warn('Gemini OCR fallback also failed, using local manual fill fallback:', geminiErr);
+        
+        const description = file.name ? file.name.split('.')[0] : 'Transaksi Struk';
+        const matchedWalletId = pockets.length > 0 ? pockets[0].id : null;
+        
+        const parsedTx = [{
+          description: description,
+          amount: 0,
+          type: 'expense',
+          wallet_id: matchedWalletId
+        }];
+        
+        setOcrTransactions(parsedTx);
+        setShowQuickText(true);
+        setToastMessage('Limit AI tercapai. Silakan isi detail secara manual.');
+        setTimeout(() => setToastMessage(null), 4000);
+      }
+    } finally {
+      setIsOcrLoading(false);
+      e.target.value = '';
+    }
+  };
+
   return (
     <div className="mobile-dashboard landing-page">
       {isLoading && (
@@ -459,7 +584,7 @@ const HomePage = () => {
                 {/* Balance Card */}
                 <div className="balance-card">
                   <p className="balance-label">TOTAL SALDO (SEMUA KANTONG)</p>
-                  <h1 className="balance-amount">Rp {totalBalance.toLocaleString('id-ID')}</h1>
+                  <h1 className="balance-amount">{formatRupiah(totalBalance)}</h1>
                   <div className="balance-actions">
                     <button className="action-btn topup-btn" onClick={() => setShowAddTransaction('income')}>
                       <Banknote size={18} />
@@ -513,6 +638,11 @@ const HomePage = () => {
                   <div className="health-info">
                     <h3>Financial Health</h3>
                     <p>{healthMessage}</p>
+                    {monthlyIncome > 0 && (
+                      <p className="health-usage-detail" style={{ fontSize: '13px', color: '#666', marginTop: '8px', fontWeight: '500' }}>
+                        Kamu telah menggunakan <span style={{ color: '#EF4444', fontWeight: '700' }}>Rp {totalExpense.toLocaleString('id-ID')}</span> dari total gaji bulanan <span style={{ color: '#3B82F6', fontWeight: '700' }}>Rp {monthlyIncome.toLocaleString('id-ID')}</span>
+                      </p>
+                    )}
                   </div>
                   <div className="health-chart">
                     <svg viewBox="0 0 36 36" className="circular-chart">
@@ -704,9 +834,13 @@ const HomePage = () => {
                       <Edit size={18} />
                       <span>Manual</span>
                     </button>
-                    <button className="fab-menu-item" onClick={() => { setShowFabMenu(false); setShowScanner(true); }}>
-                      <Upload size={18} />
-                      <span>Unggah</span>
+                    <button className="fab-menu-item" onClick={() => { setShowFabMenu(false); document.getElementById('ocr-file-input')?.click(); }}>
+                      <Camera size={18} />
+                      <span>Scan Struk</span>
+                    </button>
+                    <button className="fab-menu-item" onClick={() => { setShowFabMenu(false); setShowQuickText(true); }}>
+                      <Sparkles size={18} />
+                      <span>Teks Cepat</span>
                     </button>
                   </div>
                 </>
@@ -729,6 +863,23 @@ const HomePage = () => {
         </div>
       )}
 
+      <input 
+        type="file" 
+        id="ocr-file-input" 
+        style={{ display: 'none' }} 
+        accept="image/*" 
+        onChange={handleOcrFileChange} 
+      />
+
+      {isOcrLoading && (
+        <div className="dashboard-loading-overlay">
+          <div className="loading-spinner-container">
+            <div className="loading-spinner-circle"></div>
+            <p className="loading-spinner-text">Menganalisis struk dengan AI...</p>
+          </div>
+        </div>
+      )}
+
       {showScanner && <MobileScannerOverlay onClose={() => setShowScanner(false)} />}
       {showCreatePocket && (
         <CreatePocketOverlay 
@@ -742,6 +893,17 @@ const HomePage = () => {
           pockets={pockets}
           onClose={() => setShowAddTransaction(null)}
           onSubmit={handleAddTransaction}
+        />
+      )}
+      {showQuickText && (
+        <QuickTextEntryOverlay 
+          pockets={pockets}
+          initialTransactions={ocrTransactions}
+          onClose={() => {
+            setShowQuickText(false);
+            setOcrTransactions(null);
+          }}
+          onSubmit={handleAddMultipleTransactions}
         />
       )}
       {toastMessage && (

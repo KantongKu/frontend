@@ -1,7 +1,9 @@
 import axios from 'axios';
 import { Wallet, PiggyBank, Plane, Heart, Home, ShoppingBag, Utensils, ShoppingCart, Banknote, HelpCircle } from 'lucide-react';
 
-const API_BASE_URL = 'https://web-production-d907c.up.railway.app/api';
+const API_BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+  ? 'http://localhost:4000/api'
+  : 'https://web-production-d907c.up.railway.app/api';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -52,6 +54,13 @@ const iconMap = {
 
 const pocketColors = ['pocket-blue', 'pocket-yellow', 'pocket-green', 'pocket-orange', 'pocket-purple'];
 
+// Format Rupiah helper
+export const formatRupiah = (value) => {
+  const isNegative = value < 0;
+  const absValue = Math.abs(value);
+  return `${isNegative ? '- ' : ''}Rp ${absValue.toLocaleString('id-ID')}`;
+};
+
 // Schema Mapping Utility for Wallets/Budget Pockets
 export const mapWalletToFrontend = (w, index = 0) => {
   const id = w.wallet_id || w.id || w._id;
@@ -78,7 +87,7 @@ export const mapWalletToFrontend = (w, index = 0) => {
   return {
     id,
     title,
-    amount: `Rp ${balance.toLocaleString('id-ID')}`,
+    amount: formatRupiah(balance),
     balance, // raw number
     progress,
     colorClass,
@@ -179,9 +188,16 @@ export const userService = {
       // Try to fetch from API first - use /auth/profile endpoint
       const response = await getDeduplicated('/auth/profile');
       const profileData = response.data.data || response.data;
+      
+      // Ensure compatibility with both 'name' and 'full_name'
+      const formattedProfile = {
+        ...profileData,
+        name: profileData.full_name || profileData.name
+      };
+      
       // Save to localStorage for persistence
-      localStorage.setItem('activeUser', JSON.stringify(profileData));
-      return profileData;
+      localStorage.setItem('activeUser', JSON.stringify(formattedProfile));
+      return formattedProfile;
     } catch (error) {
       console.error('Error fetching profile from API:', error);
       // Fallback to localStorage if API endpoint not available
@@ -202,24 +218,27 @@ export const userService = {
       if (updateData.avatar) {
         // Create FormData for file upload
         const formData = new FormData();
-        formData.append('full_name', updateData.full_name || '');
-        if (updateData.avatar) {
-          formData.append('avatar', updateData.avatar);
-        }
-        requestData = formData;
-        config = {
-          headers: {
-            'Content-Type': 'multipart/form-data'
+        Object.keys(updateData).forEach(key => {
+          if (updateData[key] !== undefined && updateData[key] !== null) {
+            formData.append(key, updateData[key]);
           }
-        };
+        });
+        requestData = formData;
       }
 
       // Try to update via API first - use /auth/profile endpoint
       const response = await api.put('/auth/profile', requestData, config);
       const profileData = response.data.data || response.data;
+      
+      // Ensure compatibility with both 'name' and 'full_name'
+      const formattedProfile = {
+        ...profileData,
+        name: profileData.full_name || profileData.name
+      };
+      
       // Update localStorage
-      localStorage.setItem('activeUser', JSON.stringify(profileData));
-      return profileData;
+      localStorage.setItem('activeUser', JSON.stringify(formattedProfile));
+      return formattedProfile;
     } catch (error) {
       console.error('Error updating profile via API:', error);
       // Fallback: Update only in localStorage if API endpoint not available
@@ -228,8 +247,10 @@ export const userService = {
         const activeUser = JSON.parse(activeUserJson);
         const updatedUser = {
           ...activeUser,
+          name: updateData.full_name || activeUser.name || activeUser.full_name,
           full_name: updateData.full_name || activeUser.full_name,
-          email: updateData.email || activeUser.email
+          email: updateData.email || activeUser.email,
+          monthly_income: updateData.monthly_income !== undefined ? updateData.monthly_income : activeUser.monthly_income
           // Note: avatar file can't be stored in localStorage, only URL from API response
         };
         localStorage.setItem('activeUser', JSON.stringify(updatedUser));
@@ -367,11 +388,7 @@ export const transactionService = {
         formData.append('is_ocr', txData.is_ocr !== undefined ? !!txData.is_ocr : false);
         formData.append('image', txData.receiptImage);
         
-        const response = await api.post('/transactions', formData, {
-          headers: {
-            'Content-Type': 'multipart/form-data'
-          }
-        });
+        const response = await api.post('/transactions', formData);
         const resData = response.data.data || response.data;
         return mapTransactionToFrontend(resData);
       } else {
@@ -434,9 +451,7 @@ export const scannerService = {
     formData.append('receipt', file);
     
     try {
-      const response = await api.post('/scanner/upload', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
+      const response = await api.post('/scanner/upload', formData);
       return response.data;
     } catch (error) {
       console.error('Error uploading receipt:', error);
@@ -444,28 +459,43 @@ export const scannerService = {
     }
   },
 
-  extractData: async (imageFile) => {
+  extractData: async (imageFile, signal = null) => {
     const formData = new FormData();
-    formData.append('image', imageFile);
+    formData.append('file', imageFile);
     
     try {
-      console.log('Calling OCR API with file:', imageFile.name || imageFile.size, 'bytes');
-      const response = await api.post('/scanner/extract', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
+      console.log('Calling Hugging Face OCR space directly, size:', imageFile.size, 'bytes');
+      const response = await fetch('https://suherlan-kantongku.hf.space/predict', {
+        method: 'POST',
+        body: formData,
+        signal: signal
       });
       
-      console.log('OCR API raw response:', response);
-      
-      // Validate response status
-      if (!response || !response.data) {
-        throw new Error('Response kosong dari server');
+      if (!response.ok) {
+        throw new Error(`OCR service failed with status ${response.status}`);
       }
       
-      return response.data;
+      const data = await response.json();
+      console.log('Direct OCR raw response:', data);
+      
+      if (!data || typeof data !== 'object') {
+        throw new Error('Format respons tidak valid dari service OCR.');
+      }
+      
+      // Normalize to return total, merchant, date, items
+      return {
+        success: data.success !== undefined ? data.success : true,
+        merchant: data.merchant || 'Toko Struk',
+        total: Number(data.total || 0),
+        amount: Number(data.total || 0),
+        date: data.date || new Date().toISOString().split('T')[0],
+        items: data.item ? [{ name: data.item, qty: 1, price: Number(data.total || 0) }] : [],
+        category: data.category || 'Lainnya',
+        error_message: data.error_message || ''
+      };
     } catch (error) {
-      console.error('Error extracting data:', error);
-      console.error('Error details:', error.response?.data || error.message);
-      throw new Error(error.response?.data?.message || error.message || 'Gagal menghubungi server OCR');
+      console.error('Error in scannerService.extractData:', error);
+      throw new Error(error.message || 'Gagal menghubungi server OCR Hugging Face');
     }
   },
 };
